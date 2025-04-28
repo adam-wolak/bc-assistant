@@ -1,0 +1,382 @@
+/* BC Assistant - style główne */
+
+/* Style wspólne dla obu trybów */
+.bc-assistant-embedded,
+.bc-assistant-chat-window {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+    background-color: #fff;
+    border-radius: 15px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Nagłówek */
+.bc-assistant-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #A67C52; /* Brązowy kolor */
+    color: white;
+}
+
+.bc-assistant-title {
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.bc-assistant-controls {
+    display: flex;
+    gap: 6px;
+}
+
+.bc-assistant-controls button {
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.bc-assistant-controls button:hover {
+    background-color: rgba(255,255,255,0.2);
+}
+
+/* Okno konwersacji */
+.bc-assistant-conversation {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background-color: #f7f9fc;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    min-height: 200px;
+    max-height: 350px;
+}
+
+/* Wiadomości */
+.bc-assistant-message {
+    display: flex;
+    max-width: 100%;
+    margin-bottom: 10px;
+}
+
+.bc-assistant-ai {
+    align-self: flex-start;
+}
+
+.bc-assistant-user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.bc-assistant-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 8px;
+    flex-shrink: 0;
+    background-color: #A67C52; /* Brązowe tło dla avatara */
+    border: 2px solid #A67C52; /* Obramowanie zgodne z kolorystyką */
+}
+
+.bc-assistant-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Dymki wiadomości */
+.bc-assistant-bubble {
+    background-color: #F5F0E7; /* Jasny beżowy/kremowy */
+    border-radius: 18px;
+    padding: 12px 15px;
+    max-width: 80%;
+    color: #4A3F35; /* Ciemny brąz dla tekstu */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Zwiększona specyficzność dla dymka AI */
+body .bc-assistant-ai .bc-assistant-bubble,
+html .bc-assistant-ai .bc-assistant-bubble,
+.bc-assistant-ai .bc-assistant-bubble {
+    background-color: #F5F0E7; /* Jasny beżowy/kremowy */
+    color: #4A3F35; /* Ciemny brąz dla tekstu */
+}
+
+/* Dymki użytkownika */
+.bc-assistant-user .bc-assistant-bubble {
+    background-color: #A67C52; /* Brązowy */
+    color: white;
+    margin-right: 8px;
+}
+
+/* Pole tekstowe */
+.bc-assistant-input {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #fff;
+    border-top: 1px solid #eaeaea;
+}
+
+.bc-assistant-text {
+    flex: 1;
+    border: 1px solid #d6c9b4; /* Beżowe obramowanie */
+    border-radius: 18px;
+    padding: 10px 15px;
+    font-size: 14px;
+    resize: none;
+    height: 40px;
+    max-height: 120px;
+    font-family: inherit;
+    outline: none;
+    background-color: #F7F4EF; /* Jasne beżowe tło */
+}
+
+.bc-assistant-text:focus {
+    border-color: #A67C52; /* Brązowe obramowanie przy focus */
+    box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.2);
+}
+
+.bc-assistant-send {
+    width: 40px;
+    height: 40px;
+    background-color: #A67C52; /* Brązowy */
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    color: white;
+}
+
+.bc-assistant-send:hover {
+    background-color: #8D6848; /* Ciemniejszy brązowy */
+}
+
+/* Status */
+.bc-assistant-status {
+    padding: 5px 15px;
+    font-size: 12px;
+    color: #777;
+    text-align: center;
+    border-top: 1px solid #eaeaea;
+}
+
+.bc-assistant-typing {
+    display: none;
+    font-style: italic;
+}
+
+.bc-assistant-error {
+    display: none;
+    color: #d32f2f;
+    font-weight: 500;
+}
+
+/* Animacja kropek */
+@keyframes typing-dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.typing-dots::after {
+    content: '';
+    animation: typing-dots 1.5s infinite;
+}
+
+/* Embedded mode */
+.bc-assistant-embedded {
+    width: 100%;
+    max-width: 600px;
+    margin: 20px auto;
+    border: 1px solid #d6c9b4; /* Beżowe obramowanie */
+}
+
+/* Bubble mode */
+.bc-assistant-bubble-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.bc-assistant-bubble-button {
+    display: flex;
+    align-items: center;
+    background-color: #A67C52; /* Brązowy */
+    color: white;
+    border-radius: 30px;
+    padding: 12px 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.bc-assistant-bubble-button:hover {
+    background-color: #8D6848; /* Ciemniejszy brąz */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+
+.bc-assistant-bubble-icon {
+    margin-right: 8px;
+    font-size: 18px;
+}
+
+.bc-assistant-bubble-text {
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.bc-assistant-chat-window {
+    display: none;
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 350px;
+    height: 500px;
+    border: 1px solid #d6c9b4; /* Beżowe obramowanie */
+}
+
+/* Stan otwarty */
+.bc-assistant-bubble-container.open .bc-assistant-chat-window {
+    display: flex;
+}
+
+.bc-assistant-bubble-container.open .bc-assistant-bubble-button {
+    display: none;
+}
+
+/* Ciemny motyw */
+.bc-assistant-dark.bc-assistant-embedded,
+.bc-assistant-dark .bc-assistant-chat-window {
+    background-color: #222;
+    color: #eee;
+    border-color: #444;
+}
+
+.bc-assistant-dark .bc-assistant-header {
+    background-color: #3A2E24; /* Ciemniejszy brąz dla ciemnego motywu */
+}
+
+.bc-assistant-dark .bc-assistant-conversation {
+    background-color: #2c2c2c;
+}
+
+.bc-assistant-dark .bc-assistant-bubble {
+    background-color: #3e372e; /* Ciemny beżowy */
+    color: #eee;
+}
+
+.bc-assistant-dark .bc-assistant-user .bc-assistant-bubble {
+    background-color: #A67C52; /* Brązowy */
+    color: white;
+}
+
+.bc-assistant-dark .bc-assistant-input {
+    background-color: #333;
+    border-top-color: #444;
+}
+
+.bc-assistant-dark .bc-assistant-text {
+    background-color: #3a3a3a;
+    border-color: #444;
+    color: #eee;
+}
+
+.bc-assistant-dark .bc-assistant-text:focus {
+    border-color: #A67C52;
+}
+
+.bc-assistant-dark .bc-assistant-send {
+    background-color: #A67C52;
+}
+
+.bc-assistant-dark .bc-assistant-send:hover {
+    background-color: #8D6848;
+}
+
+.bc-assistant-dark .bc-assistant-status {
+    background-color: #333;
+    color: #aaa;
+    border-top-color: #444;
+}
+
+/* Responsywność */
+@media (max-width: 767px) {
+    .bc-assistant-embedded {
+        max-width: 100%;
+        margin: 10px;
+        border-radius: 10px;
+    }
+    
+    /* Ulepszenia dla bąbelka na urządzeniach mobilnych */
+    .bc-assistant-bubble-container {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        z-index: 999999; /* Wyższy z-index */
+    }
+    
+    .bc-assistant-bubble-button {
+        padding: 8px 16px; /* Mniejszy padding */
+        font-size: 14px;
+    }
+    
+    .bc-assistant-bubble-icon {
+        font-size: 16px;
+    }
+    
+    /* Okno czatu na urządzeniach mobilnych */
+    .bc-assistant-chat-window {
+        position: fixed;
+        width: 90vw;
+        max-width: 350px;
+        height: 70vh;
+        max-height: 500px;
+        bottom: 70px;
+        right: 10px;
+        z-index: 999998;
+    }
+    
+    /* Lepsze przewijanie na mobilnych */
+    .bc-assistant-conversation {
+        max-height: calc(70vh - 120px);
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+}
+
+/* Obsługa małych ekranów */
+@media (max-width: 360px) {
+    .bc-assistant-chat-window {
+        width: calc(100vw - 20px);
+        right: 0;
+        left: 0;
+        margin: 0 auto;
+    }
+    
+    .bc-assistant-bubble-button {
+        padding: 6px 12px;
+    }
+}
