@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<div class="wrap">
+<div class="wrap bc-assistant-admin">
     <h1>BC Assistant - Ustawienia</h1>
     
     <h2 class="nav-tab-wrapper">
@@ -14,18 +14,11 @@ if (!defined('ABSPATH')) {
         <a href="#prices" class="nav-tab">Cennik</a>
         <a href="#settings" class="nav-tab">Zaawansowane</a>
     </h2>
-
-    <form method="post" action="">
-        <?php wp_nonce_field('bc_assistant_settings'); ?>
+    
+    <form method="post" action="options.php">
+        <?php settings_fields('bc_assistant_options'); ?>
         
-        <div class="nav-tab-wrapper">
-            <a href="#general" class="nav-tab nav-tab-active">Ogólne</a>
-            <a href="#messages" class="nav-tab">Wiadomości</a>
-            <a href="#appearance" class="nav-tab">Wygląd</a>
-            <a href="#advanced" class="nav-tab">Zaawansowane</a>
-        </div>
-        
-       <!-- Zakładka: Ustawienia główne -->
+        <!-- Zakładka: Ustawienia główne -->
         <div id="general" class="tab-content">
             <table class="form-table">
                 <tr>
@@ -58,17 +51,7 @@ if (!defined('ABSPATH')) {
                         </select>
                     </td>
                 </tr>
-
-                <tr>
-                    <th scope="row"><label for="bc_assistant_display_mode">Tryb wyświetlania</label></th>
-                    <td>
-                        <select name="bc_assistant_display_mode" id="bc_assistant_display_mode">
-                            <option value="bubble" <?php selected($settings['display_mode'], 'bubble'); ?>>Bąbelek (pływający)</option>
-                            <option value="embedded" <?php selected($settings['display_mode'], 'embedded'); ?>>Wbudowany (w treści strony)</option>
-                        </select>
-                        <p class="description">Wybierz domyślny sposób wyświetlania asystenta.</p>
-                    </td>
-                </tr>
+                <!-- Pozostałe ustawienia główne -->
             </table>
         </div>
         
