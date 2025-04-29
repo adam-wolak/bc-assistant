@@ -284,7 +284,7 @@
             let isDragging = false;
             let offsetX, offsetY;
             let wasClick = true; // Dodajemy zmienną do śledzenia czy to kliknięcie czy przeciągnięcie
-            let moved = false;
+            let moved = false; // Dodatkowa zmienna do śledzenia ruchu
             
             // Set cursor style for header
             $header.css('cursor', 'move');
@@ -298,7 +298,7 @@
                 
                 isDragging = true;
                 wasClick = true; // Na początku zakładamy, że to kliknięcie
-                moved = false;
+                moved = false; // Resetujemy flagę ruchu
                 
                 const pageX = e.type === 'mousedown' ? e.pageX : e.originalEvent.touches[0].pageX;
                 const pageY = e.type === 'mousedown' ? e.pageY : e.originalEvent.touches[0].pageY;
@@ -353,8 +353,10 @@
             
             $(document).on('mouseup touchend', function() {
                 if (!isDragging) return;
-                
                 isDragging = false;
+                
+                // W tym miejscu wiemy już czy to było kliknięcie czy przeciągnięcie
+                // dzięki zmiennej `moved`
             });
         }
         
