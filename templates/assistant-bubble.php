@@ -44,19 +44,27 @@ $button_text = esc_html(BC_Assistant_Config::get('button_text'));
     <!-- Okno czatu -->
     <div class="bc-assistant-chat-window">
         <!-- Nagłówek czatu -->
-        <div class="bc-assistant-header">
-            <div class="bc-assistant-title"><?php echo $title; ?></div>
-            <div class="bc-assistant-controls">
-                <button class="bc-assistant-minimize" title="Zminimalizuj">
-                    <i class="fas fa-minus"></i>
-                </button>
-                <button class="bc-assistant-close" title="Zamknij">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        
-        <!-- Okno rozmowy -->
+	<div class="bc-assistant-header">
+    	   <div class="bc-assistant-title">Asystent BC</div>
+	   <div class="bc-assistant-controls">
+        	<button class="bc-assistant-minimize" title="Zminimalizuj">
+            	  <i class="fas fa-minus" aria-hidden="true"></i>
+        	</button>
+        	<button class="bc-assistant-close" title="Zamknij">
+            	  <i class="fas fa-times" aria-hidden="true"></i>
+        	</button>
+    	  </div>
+     	</div>
+
+    <!-- Fragment z przyciskiem wysyłania -->
+	<div class="bc-assistant-input-container">
+    	  <textarea class="bc-assistant-input" placeholder="Wpisz swoje pytanie..."></textarea>
+    	  <button class="bc-assistant-send" title="Wyślij">
+             <i class="fas fa-paper-plane" aria-hidden="true"></i>
+    	  </button>
+	</div>        
+
+     <!-- Okno rozmowy -->
         <div class="bc-assistant-conversation">
             <!-- Wiadomość powitalna -->
             <div class="bc-assistant-message bc-assistant-ai">

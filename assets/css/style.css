@@ -210,8 +210,8 @@
 .bc-assistant-bubble-button {
     display: flex;
     align-items: center;
-    background-color: #1e73be;
-    color: white;
+    background-color: #A67C52 !important; /* Brązowy kolor */
+    color: white !important;
     border-radius: 30px;
     padding: 12px 20px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
@@ -219,10 +219,24 @@
     transition: all 0.3s ease;
 }
 
-.bc-assistant-bubble-button:hover {
-    background-color: #1765a7;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+/* Kolor hover dla przycisków */
+.bc-assistant-bubble-button:hover,
+.bc-assistant-send:hover,
+.bc-assistant-voice-button:hover {
+    background-color: #8D6848 !important; /* Ciemniejszy brązowy */
+}
+
+
+/* Kolor wiadomości asystenta */
+.bc-assistant-message.assistant {
+    background-color: #F7F4EF !important; /* Jasny beżowy */
+    border-left: 3px solid #A67C52 !important;
+}
+
+/* Kolor aktywnych przycisków i kontrolek */
+.bc-assistant-minimize:hover,
+.bc-assistant-close:hover {
+    background-color: #8D6848 !important;
 }
 
 .bc-assistant-bubble-icon {
@@ -261,8 +275,13 @@
     border-color: #444;
 }
 
-.bc-assistant-dark .bc-assistant-header {
+.bc-assistant-dark {
     background-color: #333;
+}
+
+.bc-assistant-header {
+    background-color: #A67C52 !important;
+    color: white !important;
 }
 
 .bc-assistant-dark .bc-assistant-conversation {
@@ -290,8 +309,13 @@
     color: #eee;
 }
 
-.bc-assistant-dark .bc-assistant-send {
+.bc-assistant-dark {
     background-color: #1e73be;
+}
+
+.bc-assistant-send {
+    background-color: #A67C52 !important;
+    color: white !important;
 }
 
 .bc-assistant-dark .bc-assistant-status {
@@ -301,30 +325,91 @@
 }
 
 /* Responsywność */
-@media (max-width: 480px) {
-    .bc-assistant-embedded {
-        max-width: 100%;
-        margin: 10px;
-        border-radius: 10px;
+@media (max-width: 767px) {
+    /* Upewnij się, że przycisk bąbelka jest widoczny */
+    .bc-assistant-bubble-container .bc-assistant-bubble-button {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        z-index: 9999997 !important;
+        right: 20px !important;
+        bottom: 20px !important;
+        width: 60px !important;
+        height: 60px !important;
     }
     
+    /* Okno czatu pojawia się dopiero po kliknięciu */
     .bc-assistant-chat-window {
-        width: 90vw;
-        height: 80vh;
-        bottom: 70px;
-        right: 0;
+        display: none;
     }
     
-    .bc-assistant-bubble-container {
-        bottom: 15px;
-        right: 15px;
+    /* Pokaż okno czatu tylko gdy kontener ma klasę open */
+    .bc-assistant-bubble-container.open .bc-assistant-chat-window {
+        display: flex !important;
+        position: fixed !important;
+        z-index: 9999998 !important;
+        bottom: 80px !important;
+        right: 10px !important;
+        left: 10px !important; 
+        width: calc(100% - 20px) !important;
+        max-width: 100% !important;
+        height: 60vh !important;
+        max-height: 60vh !important;
     }
     
-    .bc-assistant-bubble-button {
-        padding: 10px 16px;
+    /* Dodatkowe poprawki dla mobilnych */
+    .bc-assistant-messages {
+        height: calc(100% - 120px) !important;
+    }
+
+    /* Kolor aktywnych linków w treści */
+    .bc-assistant-message a {
+    	color: #A67C52 !important;
+    }
+
+    /* Kolor trybu głosowego */
+    .bc-assistant-voice-button {
+    	background-color: #A67C52 !important;
+    }
+
+    /* Kolor w wersji aktywnej */
+    .bc-assistant-bubble-container.active .bc-assistant-bubble-button {
+    	background-color: #A67C52 !important;
     }
     
-    .bc-assistant-bubble-text {
-        font-size: 13px;
+    .bc-assistant-input-container {
+        height: 60px !important;
     }
+    
+    .bc-assistant-input {
+        font-size: 16px !important; /* Zapobiega powiększaniu się inputu na iOS */
+    }
+}
+
+/* Dodaj tryb głosowy dla mobilnych */
+.bc-assistant-voice-mode {
+    display: none;
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 200px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    z-index: 9999999;
+}
+
+.bc-assistant-voice-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #A67C52;
+    margin: 10px auto;
+    color: white;
+    cursor: pointer;
 }

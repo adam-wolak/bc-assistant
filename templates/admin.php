@@ -6,6 +6,15 @@ if (!defined('ABSPATH')) {
 <div class="wrap">
     <h1>BC Assistant - Ustawienia</h1>
     
+    <h2 class="nav-tab-wrapper">
+        <a href="#general" class="nav-tab nav-tab-active">Ustawienia główne</a>
+        <a href="#prompts" class="nav-tab">Treści promptów</a>
+        <a href="#service" class="nav-tab">Cały serwis</a>
+        <a href="#contraindications" class="nav-tab">Przeciwskazania</a>
+        <a href="#prices" class="nav-tab">Cennik</a>
+        <a href="#settings" class="nav-tab">Zaawansowane</a>
+    </h2>
+
     <form method="post" action="">
         <?php wp_nonce_field('bc_assistant_settings'); ?>
         
@@ -16,27 +25,40 @@ if (!defined('ABSPATH')) {
             <a href="#advanced" class="nav-tab">Zaawansowane</a>
         </div>
         
-        <div id="general" class="tab-content" style="display: block;">
-            <h2>Ustawienia ogólne</h2>
+       <!-- Zakładka: Ustawienia główne -->
+        <div id="general" class="tab-content">
             <table class="form-table">
                 <tr>
-                    <th scope="row"><label for="bc_assistant_api_key">Klucz API OpenAI</label></th>
+                    <th scope="row">Klucz API OpenAI</th>
                     <td>
-                        <input type="password" name="bc_assistant_api_key" id="bc_assistant_api_key" value="<?php echo esc_attr($settings['api_key']); ?>" class="regular-text" autocomplete="off" />
-                        <p class="description">Wprowadź swój klucz API z OpenAI.</p>
+                        <input type="password" name="bc_assistant_api_key" value="<?php echo esc_attr(get_option('bc_assistant_api_key')); ?>" class="regular-text" />
+                        <p class="description">Wprowadź swój klucz API z OpenAI. <a href="https://platform.openai.com/account/api-keys" target="_blank">Uzyskaj klucz API</a></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="bc_assistant_model">Model</label></th>
+                    <th scope="row">Model</th>
                     <td>
-                        <select name="bc_assistant_model" id="bc_assistant_model">
-                            <option value="gpt-4" <?php selected($settings['model'], 'gpt-4'); ?>>GPT-4</option>
-                            <option value="gpt-4o" <?php selected($settings['model'], 'gpt-4o'); ?>>GPT-4o</option>
-                            <option value="gpt-3.5-turbo" <?php selected($settings['model'], 'gpt-3.5-turbo'); ?>>GPT-3.5 Turbo</option>
+                        <select name="bc_assistant_model">
+                            <?php
+                            $selected_model = get_option('bc_assistant_model', 'gpt-3.5-turbo');
+                            $models = array(
+                                'gpt-3.5-turbo' => 'GPT-3.5 Turbo',
+                                'gpt-4' => 'GPT-4',
+                                'gpt-4-turbo' => 'GPT-4 Turbo'
+                            );
+                            foreach ($models as $value => $label) {
+                                printf(
+                                    '<option value="%s" %s>%s</option>',
+                                    esc_attr($value),
+                                    selected($selected_model, $value, false),
+                                    esc_html($label)
+                                );
+                            }
+                            ?>
                         </select>
-                        <p class="description">Wybierz model AI do użycia w czacie.</p>
                     </td>
                 </tr>
+
                 <tr>
                     <th scope="row"><label for="bc_assistant_display_mode">Tryb wyświetlania</label></th>
                     <td>
@@ -50,138 +72,97 @@ if (!defined('ABSPATH')) {
             </table>
         </div>
         
-        <div id="messages" class="tab-content" style="display: none;">
-            <h2>Wiadomości systemowe i powitalne</h2>
-            
-            <h3>Kontekst ogólny</h3>
+        <!-- Zakładka: Treści promptów -->
+        <div id="prompts" class="tab-content" style="display: none;">
             <table class="form-table">
                 <tr>
-                    <th scope="row"><label for="bc_assistant_system_message_default">Wiadomość systemowa (ogólna)</label></th>
+                    <th scope="row">Podstawowy prompt</th>
                     <td>
-                        <textarea name="bc_assistant_system_message_default" id="bc_assistant_system_message_default" rows="4" class="large-text"><?php echo esc_textarea($settings['system_message_default']); ?></textarea>
-                        <p class="description">Wiadomość systemowa określająca rolę i zachowanie asystenta w kontekście ogólnym.</p>
+                        <textarea name="bc_assistant_system_prompt" rows="5" class="large-text"><?php echo esc_textarea(get_option('bc_assistant_system_prompt', 'Jesteś pomocnym asystentem Bielsko Clinic.')); ?></textarea>
+                        <p class="description">Główny prompt systemowy definiujący zachowanie asystenta.</p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="bc_assistant_welcome_message_default">Wiadomość powitalna (ogólna)</label></th>
+                    <th scope="row">Prompt powitalny</th>
                     <td>
-                        <textarea name="bc_assistant_welcome_message_default" id="bc_assistant_welcome_message_default" rows="2" class="large-text"><?php echo esc_textarea($settings['welcome_message_default']); ?></textarea>
-                        <p class="description">Wiadomość powitalna wyświetlana użytkownikowi w kontekście ogólnym.</p>
-                    </td>
-                </tr>
-            </table>
-            
-            <h3>Kontekst zabiegu</h3>
-            <table class="form-table">
-                <tr>
-                    <th scope="row"><label for="bc_assistant_system_message_procedure">Wiadomość systemowa (zabieg)</label></th>
-                    <td>
-                        <textarea name="bc_assistant_system_message_procedure" id="bc_assistant_system_message_procedure" rows="4" class="large-text"><?php echo esc_textarea($settings['system_message_procedure']); ?></textarea>
-                        <p class="description">Wiadomość systemowa dla stron z zabiegami. Użyj {PROCEDURE_NAME} jako placeholder dla nazwy zabiegu.</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="bc_assistant_welcome_message_procedure">Wiadomość powitalna (zabieg)</label></th>
-                    <td>
-                        <textarea name="bc_assistant_welcome_message_procedure" id="bc_assistant_welcome_message_procedure" rows="2" class="large-text"><?php echo esc_textarea($settings['welcome_message_procedure']); ?></textarea>
-                        <p class="description">Wiadomość powitalna dla stron z zabiegami. Użyj {PROCEDURE_NAME} jako placeholder dla nazwy zabiegu.</p>
-                    </td>
-                </tr>
-            </table>
-            
-            <h3>Kontekst przeciwwskazań</h3>
-            <table class="form-table">
-                <tr>
-                    <th scope="row"><label for="bc_assistant_system_message_contraindications">Wiadomość systemowa (przeciwwskazania)</label></th>
-                    <td>
-                        <textarea name="bc_assistant_system_message_contraindications" id="bc_assistant_system_message_contraindications" rows="4" class="large-text"><?php echo esc_textarea($settings['system_message_contraindications']); ?></textarea>
-                        <p class="description">Wiadomość systemowa dla stron z przeciwwskazaniami.</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="bc_assistant_welcome_message_contraindications">Wiadomość powitalna (przeciwwskazania)</label></th>
-                    <td>
-                        <textarea name="bc_assistant_welcome_message_contraindications" id="bc_assistant_welcome_message_contraindications" rows="2" class="large-text"><?php echo esc_textarea($settings['welcome_message_contraindications']); ?></textarea>
-                        <p class="description">Wiadomość powitalna dla stron z przeciwwskazaniami.</p>
+                        <textarea name="bc_assistant_welcome_message" rows="3" class="large-text"><?php echo esc_textarea(get_option('bc_assistant_welcome_message', 'Witaj! Jestem asystentem Bielsko Clinic. W czym mogę pomóc?')); ?></textarea>
+                        <p class="description">Wiadomość powitalna wyświetlana przy otwarciu okna czatu.</p>
                     </td>
                 </tr>
             </table>
         </div>
         
-        <div id="appearance" class="tab-content" style="display: none;">
-            <h2>Wygląd asystenta</h2>
+        <!-- Zakładka: Cały serwis -->
+        <div id="service" class="tab-content" style="display: none;">
             <table class="form-table">
                 <tr>
-                    <th scope="row"><label for="bc_assistant_button_text">Tekst przycisku</label></th>
+                    <th scope="row">Prompt dla całego serwisu</th>
                     <td>
-                        <input type="text" name="bc_assistant_button_text" id="bc_assistant_button_text" value="<?php echo esc_attr($settings['button_text']); ?>" class="regular-text" />
-                        <p class="description">Tekst wyświetlany na przycisku asystenta (w trybie bąbelka).</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="bc_assistant_bubble_icon">Ikona bąbelka</label></th>
-                    <td>
-                        <select name="bc_assistant_bubble_icon" id="bc_assistant_bubble_icon">
-                            <option value="chat" <?php selected($settings['bubble_icon'], 'chat'); ?>>Dymek czatu</option>
-                            <option value="question" <?php selected($settings['bubble_icon'], 'question'); ?>>Znak zapytania</option>
-                            <option value="info" <?php selected($settings['bubble_icon'], 'info'); ?>>Info</option>
-                            <option value="robot" <?php selected($settings['bubble_icon'], 'robot'); ?>>Robot</option>
-                            <option value="user" <?php selected($settings['bubble_icon'], 'user'); ?>>Użytkownik</option>
-                        </select>
-                        <div class="icon-preview" style="margin-top: 10px; font-size: 24px;">
-                            <i class="fas fa-comments" id="icon-preview"></i>
-                        </div>
-                        <p class="description">Wybierz ikonę dla przycisku bąbelka.</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="bc_assistant_theme">Motyw</label></th>
-                    <td>
-                        <select name="bc_assistant_theme" id="bc_assistant_theme">
-                            <option value="light" <?php selected($settings['theme'], 'light'); ?>>Jasny</option>
-                            <option value="dark" <?php selected($settings['theme'], 'dark'); ?>>Ciemny</option>
-                        </select>
-                        <p class="description">Wybierz motyw kolorystyczny asystenta.</p>
+                        <textarea name="bc_assistant_site_prompt" rows="8" class="large-text"><?php echo esc_textarea(get_option('bc_assistant_site_prompt', 'Informacje o Bielsko Clinic i dostępnych usługach...')); ?></textarea>
+                        <p class="description">Dodatkowe informacje o całym serwisie, które zostaną dodane do kontekstu.</p>
                     </td>
                 </tr>
             </table>
         </div>
         
-        <div id="advanced" class="tab-content" style="display: none;">
-            <h2>Zaawansowane ustawienia</h2>
+        <!-- Zakładka: Przeciwskazania -->
+        <div id="contraindications" class="tab-content" style="display: none;">
             <table class="form-table">
                 <tr>
-                    <th scope="row"><label for="bc_assistant_context_detection">Wykrywanie kontekstu</label></th>
+                    <th scope="row">Przeciwskazania do zabiegów</th>
                     <td>
-                        <fieldset>
-                            <legend class="screen-reader-text"><span>Wykrywanie kontekstu</span></legend>
-                            <label for="bc_assistant_context_detection">
-                                <input name="bc_assistant_context_detection" type="checkbox" id="bc_assistant_context_detection" value="1" <?php checked($settings['context_detection'], 1); ?>>
-                                Automatycznie wykrywaj kontekst strony
-                            </label>
-                            <p class="description">Gdy włączone, asystent będzie automatycznie dostosowywał swoje zachowanie w zależności od typu strony.</p>
-                        </fieldset>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="bc_assistant_enable_logging">Zapisywanie logów</label></th>
-                    <td>
-                        <fieldset>
-                            <legend class="screen-reader-text"><span>Zapisywanie logów</span></legend>
-                            <label for="bc_assistant_enable_logging">
-                                <input name="bc_assistant_enable_logging" type="checkbox" id="bc_assistant_enable_logging" value="1" <?php checked($settings['enable_logging'] ?? false, 1); ?>>
-                                Zapisuj logi z rozmów
-                            </label>
-                            <p class="description">Gdy włączone, rozmowy z asystentem będą zapisywane do plików logów (wp-content/uploads/bc-assistant/logs).</p>
-                        </fieldset>
+                        <textarea name="bc_assistant_contraindications" rows="8" class="large-text"><?php echo esc_textarea(get_option('bc_assistant_contraindications', 'Lista przeciwskazań do zabiegów...')); ?></textarea>
+                        <p class="description">Informacje o przeciwskazaniach do zabiegów.</p>
                     </td>
                 </tr>
             </table>
         </div>
         
-        <p class="submit">
-            <input type="submit" name="bc_assistant_save_settings" class="button button-primary" value="Zapisz ustawienia" />
-        </p>
+        <!-- Zakładka: Cennik -->
+        <div id="prices" class="tab-content" style="display: none;">
+            <table class="form-table">
+                <tr>
+                    <th scope="row">Informacje o cenach</th>
+                    <td>
+                        <textarea name="bc_assistant_prices" rows="8" class="large-text"><?php echo esc_textarea(get_option('bc_assistant_prices', 'Informacje o cenach zabiegów...')); ?></textarea>
+                        <p class="description">Informacje o cenach zabiegów i usług.</p>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Zakładka: Zaawansowane -->
+        <div id="settings" class="tab-content" style="display: none;">
+            <table class="form-table">
+                <tr>
+                    <th scope="row">Maksymalna długość odpowiedzi</th>
+                    <td>
+                        <input type="number" name="bc_assistant_max_tokens" value="<?php echo esc_attr(get_option('bc_assistant_max_tokens', '500')); ?>" min="100" max="4000" step="50" />
+                        <p class="description">Maksymalna liczba tokenów w odpowiedzi (1 token ≈ 4 znaki).</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Temperatura</th>
+                    <td>
+                        <input type="range" name="bc_assistant_temperature" value="<?php echo esc_attr(get_option('bc_assistant_temperature', '0.7')); ?>" min="0" max="1" step="0.1" class="bc-range" />
+                        <span class="bc-range-value"><?php echo esc_attr(get_option('bc_assistant_temperature', '0.7')); ?></span>
+                        <p class="description">Kontroluje kreatywność odpowiedzi (0 = bardziej precyzyjne, 1 = bardziej kreatywne).</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Zapisywanie historii rozmów</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="bc_assistant_save_history" value="1" <?php checked(get_option('bc_assistant_save_history', '1'), '1'); ?> />
+                            Włącz zapisywanie historii rozmów
+                        </label>
+                        <p class="description">Zapisuje historię rozmów użytkowników (zwiększa kontekst, ale zużywa więcej tokenów).</p>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <?php submit_button('Zapisz ustawienia'); ?>
     </form>
 </div>
 
@@ -201,35 +182,12 @@ jQuery(document).ready(function($) {
         $(target).show();
     });
     
-    // Obsługa podglądu ikony
-    $('#bc_assistant_bubble_icon').on('change', function() {
-        var icon = $(this).val();
-        var iconClass = '';
-        
-        switch(icon) {
-            case 'chat':
-                iconClass = 'fas fa-comments';
-                break;
-            case 'question':
-                iconClass = 'fas fa-question-circle';
-                break;
-            case 'info':
-                iconClass = 'fas fa-info-circle';
-                break;
-            case 'robot':
-                iconClass = 'fas fa-robot';
-                break;
-            case 'user':
-                iconClass = 'fas fa-user-md';
-                break;
-            default:
-                iconClass = 'fas fa-comments';
-        }
-        
-        $('#icon-preview').attr('class', iconClass);
+    // Aktualizacja wartości dla pola range (suwaka)
+    $('.bc-range').on('input', function() {
+        $(this).next('.bc-range-value').text($(this).val());
     });
     
-    // Trigger icon preview on load
-    $('#bc_assistant_bubble_icon').trigger('change');
+    // Aktywuj pierwszą zakładkę domyślnie
+    $('.nav-tab:first').trigger('click');
 });
 </script>

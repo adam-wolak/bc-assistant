@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BC Assistant
  * Description: Interactive AI Assistant for WordPress using ChatGPT API
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Adam Wolak
  * Text Domain: bc-assistant
  */
@@ -55,7 +55,7 @@ class BC_Assistant_Plugin {
         add_action('init', array($this, 'init'));
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'), 15);
         add_action('admin_menu', array($this, 'admin_menu'));
-        add_action('admin_init', array($this, 'register_settings'));
+//        add_action('admin_init', array($this, 'register_settings'));
         add_action('wp_footer', array($this, 'render_bubble'));
         add_action('wp_ajax_bc_assistant_chat', array($this, 'process_chat_request'));
         add_action('wp_ajax_nopriv_bc_assistant_chat', array($this, 'process_chat_request'));
@@ -141,25 +141,35 @@ class BC_Assistant_Plugin {
             return;
         }
 
+       // Dołącz Font Awesome z CDN
+        wp_enqueue_style(
+            'font-awesome',
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+             array(),
+            '5.15.4'
+        );
+
         // Dołącz jQuery
         wp_enqueue_script('jquery');
         
         // Dołącz plik CSS
         wp_enqueue_style(
-            'bc-assistant-style',
-            $this->plugin_url . 'assets/css/style.css',
+           'bc-assistant-style',
+            BC_ASSISTANT_URL . 'assets/css/style.css',
             array(),
-            filemtime($this->plugin_path . 'assets/css/style.css')
+            BC_ASSISTANT_VERSION
         );
+
         
         // Dołącz plik JS
         wp_enqueue_script(
-            'bc-assistant-script',
-            $this->plugin_url . 'assets/js/bc-assistant-script.js',
+           'bc-assistant-script',
+            BC_ASSISTANT_URL . 'assets/js/script.js',
             array('jquery'),
-            filemtime($this->plugin_path . 'assets/js/bc-assistant-script.js'),
+            BC_ASSISTANT_VERSION,
             true
         );
+
         
         // Przekaż zmienne do JS
         wp_localize_script('bc-assistant-script', 'bc_assistant_vars', array(

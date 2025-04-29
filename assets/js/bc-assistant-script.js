@@ -223,7 +223,78 @@
             this.container.addClass('open');
             this.scrollToBottom();
             this.textInput.focus();
+            this.chatWindow.fadeIn(300);
+            this.chatInput.focus();
+    
+       // Obsługa przeciągania okna
+            this.makeDraggable(this.chatWindow);
             
+makeDraggable(element) {
+    if (!element || !element.length) return;
+    
+    const $header = element.find('.bc-assistant-header');
+    let isDragging = false;
+    let offsetX, offsetY;
+    
+    // Zmień kursor nad nagłówkiem
+    $header.css('cursor', 'move');
+    
+    // Dodaj obsługę zdarzeń dla przeciągania
+    $header.on('mousedown touchstart', function(e) {
+        isDragging = true;
+        
+        const pageX = e.type === 'mousedown' ? e.pageX : e.originalEvent.touches[0].pageX;
+        const pageY = e.type === 'mousedown' ? e.pageY : e.originalEvent.touches[0].pageY;
+        
+        const elementOffset = element.offset();
+        offsetX = pageX - elementOffset.left;
+        offsetY = pageY - elementOffset.top;
+        
+        // Zmień pozycjonowanie na absolute, jeśli jeszcze nie jest
+        if (element.css('position') !== 'absolute') {
+            const position = element.position();
+            element.css({
+                'position': 'absolute',
+                'z-index': 9999999,
+                'left': position.left + 'px',
+                'top': position.top + 'px',
+                'right': 'auto',
+                'bottom': 'auto'
+            });
+        }
+        
+        e.preventDefault();
+    });
+    
+    $(document).on('mousemove touchmove', function(e) {
+        if (!isDragging) return;
+        
+        const pageX = e.type === 'mousemove' ? e.pageX : e.originalEvent.touches[0].pageX;
+        const pageY = e.type === 'mousemove' ? e.pageY : e.originalEvent.touches[0].pageY;
+        
+        const windowWidth = $(window).width();
+        const windowHeight = $(window).height();
+        const elementWidth = element.outerWidth();
+        const elementHeight = element.outerHeight();
+        
+        // Oblicz nowe koordynaty, upewniając się, że okno pozostaje w granicach ekranu
+        let newLeft = Math.max(0, Math.min(pageX - offsetX, windowWidth - elementWidth));
+        let newTop = Math.max(0, Math.min(pageY - offsetY, windowHeight - elementHeight));
+        
+        // Ustaw nową pozycję
+        element.css({
+            'left': newLeft + 'px',
+            'top': newTop + 'px'
+        });
+        
+        e.preventDefault();
+    });
+    
+    $(document).on('mouseup touchend', function() {
+        isDragging = false;
+    });
+}
+
             // Zapisz stan
             if (window.localStorage) {
                 localStorage.setItem('bc_assistant_open', '1');
