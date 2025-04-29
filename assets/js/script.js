@@ -283,13 +283,22 @@
             const $header = element.find('.bc-assistant-header');
             let isDragging = false;
             let offsetX, offsetY;
+            let wasClick = true; // Dodajemy zmienną do śledzenia czy to kliknięcie czy przeciągnięcie
+            let moved = false;
             
             // Set cursor style for header
             $header.css('cursor', 'move');
             
             // Handle mouse/touch events for dragging
             $header.on('mousedown touchstart', function(e) {
+                // Nie wywołuj akcji na kontrolkach
+                if ($(e.target).closest('.bc-assistant-controls').length > 0) {
+                    return;
+                }
+                
                 isDragging = true;
+                wasClick = true; // Na początku zakładamy, że to kliknięcie
+                moved = false;
                 
                 const pageX = e.type === 'mousedown' ? e.pageX : e.originalEvent.touches[0].pageX;
                 const pageY = e.type === 'mousedown' ? e.pageY : e.originalEvent.touches[0].pageY;
@@ -297,6 +306,19 @@
                 const elementOffset = element.offset();
                 offsetX = pageX - elementOffset.left;
                 offsetY = pageY - elementOffset.top;
+                
+                e.preventDefault();
+            });
+            
+            $(document).on('mousemove touchmove', function(e) {
+                if (!isDragging) return;
+                
+                // Jeśli nastąpił ruch, to nie jest zwykłe kliknięcie
+                wasClick = false;
+                moved = true;
+                
+                const pageX = e.type === 'mousemove' ? e.pageX : e.originalEvent.touches[0].pageX;
+                const pageY = e.type === 'mousemove' ? e.pageY : e.originalEvent.touches[0].pageY;
                 
                 // Change positioning to absolute if it's not already
                 if (element.css('position') !== 'absolute') {
@@ -310,15 +332,6 @@
                         'bottom': 'auto'
                     });
                 }
-                
-                e.preventDefault();
-            });
-            
-            $(document).on('mousemove touchmove', function(e) {
-                if (!isDragging) return;
-                
-                const pageX = e.type === 'mousemove' ? e.pageX : e.originalEvent.touches[0].pageX;
-                const pageY = e.type === 'mousemove' ? e.pageY : e.originalEvent.touches[0].pageY;
                 
                 const windowWidth = $(window).width();
                 const windowHeight = $(window).height();
@@ -339,6 +352,8 @@
             });
             
             $(document).on('mouseup touchend', function() {
+                if (!isDragging) return;
+                
                 isDragging = false;
             });
         }
@@ -370,7 +385,7 @@
                 if (!this.container.hasClass('open')) {
                     this.container.addClass('open');
                     this.voiceMode.show();
-                    this.chatWindow.hide();
+                    this.chatWindow.hide(); // Upewnij się, że okno czatu jest ukryte
                 } else {
                     this.container.removeClass('open');
                     this.voiceMode.hide();
@@ -378,56 +393,95 @@
                 }
             });
             
-            // Handle voice button
+            // Upewnij się, że po kliknięciu w przycisk głosowy, okno czatu jest poprawnie wyświetlane
             this.voiceButton.off('click').on('click', () => {
+                this.voiceMode.hide();
+                this.chatWindow.fadeIn(300);
                 this.startVoiceRecognition();
             });
         }
         
         /**
-         * Start voice recognition
+         * Start voice recognition using OpenAI
          */
         startVoiceRecognition() {
-            // Check if browser supports Web Speech API
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert('Twoja przeglądarka nie obsługuje rozpoznawania mowy. Spróbuj użyć Chrome.');
-                return;
-            }
-            
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'pl-PL';
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            
-            // Change button appearance
+            // Pokaż informację o nasłuchiwaniu
             this.voiceButton.html('<i class="fas fa-spinner fa-spin"></i>');
             this.container.find('.bc-assistant-voice-status').text('Słucham...');
-            
-            recognition.start();
-            
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                
-                // Hide voice mode and show chat window
-                this.voiceMode.hide();
-                this.chatWindow.show();
-                
-                // Set input value and send message
-                this.chatInput.val(transcript);
-                this.sendMessage();
-            };
-            
-            recognition.onerror = (event) => {
-                console.error('Speech recognition error', event.error);
-                this.voiceButton.html('<i class="fas fa-microphone"></i>');
-                this.container.find('.bc-assistant-voice-status').text('Wystąpił błąd. Spróbuj ponownie.');
-            };
-            
-            recognition.onend = () => {
-                this.voiceButton.html('<i class="fas fa-microphone"></i>');
-                this.container.find('.bc-assistant-voice-status').text('Naciśnij mikrofon, aby mówić');
-            };
+
+            // Przygotuj element audio do nagrywania
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    const mediaRecorder = new MediaRecorder(stream);
+                    const audioChunks = [];
+
+                    mediaRecorder.addEventListener("dataavailable", event => {
+                        audioChunks.push(event.data);
+                    });
+
+                    mediaRecorder.addEventListener("stop", () => {
+                        // Zatrzymaj strumień
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        // Utwórz blob z nagrania
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        
+                        // Przygotuj FormData do wysłania
+                        const formData = new FormData();
+                        formData.append('audio', audioBlob);
+                        formData.append('action', 'bc_assistant_transcribe_audio');
+                        formData.append('nonce', bcAssistantData.nonce);
+                        
+                        // Wyślij do naszego endpointu, który będzie pośredniczył w komunikacji z OpenAI
+                        $.ajax({
+                            url: bcAssistantData.ajaxUrl,
+                            method: 'POST',
+                            data: formData,
+                            processData: false,
+                            contentType: false,
+                            success: (response) => {
+                                // Resetuj wygląd przycisku
+                                this.voiceButton.html('<i class="fas fa-microphone"></i>');
+                                this.container.find('.bc-assistant-voice-status').text('Naciśnij mikrofon, aby mówić');
+                                
+                                if (response.success) {
+                                    // Ukryj tryb głosowy i pokaż okno czatu
+                                    this.voiceMode.hide();
+                                    this.chatWindow.show();
+                                    
+                                    // Ustaw tekst w polu wejściowym i wyślij
+                                    this.chatInput.val(response.data.text);
+                                    this.sendMessage();
+                                } else {
+                                    // Pokaż błąd
+                                    alert('Nie udało się przetworzyć nagrania. Spróbuj ponownie.');
+                                }
+                            },
+                            error: () => {
+                                // Resetuj wygląd przycisku
+                                this.voiceButton.html('<i class="fas fa-microphone"></i>');
+                                this.container.find('.bc-assistant-voice-status').text('Wystąpił błąd. Spróbuj ponownie.');
+                                alert('Wystąpił błąd podczas przetwarzania nagrania.');
+                            }
+                        });
+                    });
+
+                    // Rozpocznij nagrywanie
+                    mediaRecorder.start();
+                    
+                    // Nagraj przez 5 sekund
+                    setTimeout(() => {
+                        if (mediaRecorder.state === "recording") {
+                            mediaRecorder.stop();
+                        }
+                    }, 5000);
+                })
+                .catch(error => {
+                    console.error('Error accessing microphone:', error);
+                    this.voiceButton.html('<i class="fas fa-microphone"></i>');
+                    this.container.find('.bc-assistant-voice-status').text('Nie można uzyskać dostępu do mikrofonu.');
+                    alert('Nie można uzyskać dostępu do mikrofonu. Sprawdź uprawnienia przeglądarki.');
+                });
         }
     }
     

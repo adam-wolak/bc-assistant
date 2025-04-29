@@ -67,6 +67,8 @@ class BC_Assistant {
         // Ajax handlers
         add_action('wp_ajax_bc_assistant_send_message', array($this, 'ajax_send_message'));
         add_action('wp_ajax_nopriv_bc_assistant_send_message', array($this, 'ajax_send_message'));
+        add_action('wp_ajax_bc_assistant_transcribe_audio', array($this, 'ajax_transcribe_audio'));
+        add_action('wp_ajax_nopriv_bc_assistant_transcribe_audio', array($this, 'ajax_transcribe_audio'));
         
         // Add shortcode
         add_shortcode('bc_assistant', array($this, 'render_shortcode'));
@@ -244,6 +246,63 @@ class BC_Assistant {
     }
     
     /**
+     * Ajax handler for transcribing audio
+     */
+    public function ajax_transcribe_audio() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bc_assistant_nonce')) {
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
+        
+        // Check if audio file was uploaded
+        if (!isset($_FILES['audio']) || $_FILES['audio']['error'] !== UPLOAD_ERR_OK) {
+            wp_send_json_error('No audio file uploaded');
+            return;
+        }
+        
+        $api_key = get_option('bc_assistant_api_key');
+        
+        if (empty($api_key)) {
+            wp_send_json_error('API key is not configured');
+            return;
+        }
+        
+        // Upewnij się, że klucz API jest poprawnie sformatowany
+        $api_key = trim($api_key); // Usuń białe znaki
+        
+        // Send audio to OpenAI API
+        $response = wp_remote_post('https://api.openai.com/v1/audio/transcriptions', array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key
+            ),
+            'body' => array(
+                'file' => new CURLFile($_FILES['audio']['tmp_name']),
+                'model' => 'whisper-1'
+            ),
+            'timeout' => 60
+        ));
+        
+        if (is_wp_error($response)) {
+            wp_send_json_error($response->get_error_message());
+            return;
+        }
+        
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        if ($response_code !== 200) {
+            $error_message = isset($response_body['error']['message']) ? $response_body['error']['message'] : 'Unknown error';
+            wp_send_json_error($error_message);
+            return;
+        }
+        
+        wp_send_json_success(array(
+            'text' => $response_body['text']
+        ));
+    }
+    
+    /**
      * Get OpenAI API response
      */
     private function get_openai_response($conversation) {
@@ -252,6 +311,9 @@ class BC_Assistant {
         if (empty($api_key)) {
             return new WP_Error('api_key_missing', 'API key is not configured');
         }
+        
+        // Upewnij się, że klucz API jest poprawnie sformatowany
+        $api_key = trim($api_key); // Usuń białe znaki
         
         $model = get_option('bc_assistant_model', 'gpt-3.5-turbo');
         $max_tokens = intval(get_option('bc_assistant_max_tokens', 500));
