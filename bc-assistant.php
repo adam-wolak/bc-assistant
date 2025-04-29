@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BC Assistant
  * Description: Interactive AI Assistant for WordPress using ChatGPT API
- * Version: 1.0.2
+ * Version: 1.0.0
  * Author: Adam Wolak
  * Text Domain: bc-assistant
  */
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 // Definiuj ścieżki wtyczki
 define('BC_ASSISTANT_DIR', plugin_dir_path(__FILE__));
 define('BC_ASSISTANT_URL', plugin_dir_url(__FILE__));
-define('BC_ASSISTANT_VERSION', '1.0.2');
+define('BC_ASSISTANT_VERSION', '1.0.0');
 
 // Dołącz pliki wtyczki
 require_once BC_ASSISTANT_DIR . 'includes/config.php';
@@ -55,6 +55,7 @@ class BC_Assistant_Plugin {
         add_action('init', array($this, 'init'));
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'), 15);
         add_action('admin_menu', array($this, 'admin_menu'));
+        add_action('admin_init', array($this, 'register_settings'));
         add_action('wp_footer', array($this, 'render_bubble'));
         add_action('wp_ajax_bc_assistant_chat', array($this, 'process_chat_request'));
         add_action('wp_ajax_nopriv_bc_assistant_chat', array($this, 'process_chat_request'));
@@ -135,6 +136,38 @@ class BC_Assistant_Plugin {
         }
     }
 
+    public function enqueue_scripts() {
+        if (!$this->should_load_assets()) {
+            return;
+        }
+
+        // Dołącz jQuery
+        wp_enqueue_script('jquery');
+        
+        // Dołącz plik CSS
+        wp_enqueue_style(
+            'bc-assistant-style',
+            $this->plugin_url . 'assets/css/style.css',
+            array(),
+            filemtime($this->plugin_path . 'assets/css/style.css')
+        );
+        
+        // Dołącz plik JS
+        wp_enqueue_script(
+            'bc-assistant-script',
+            $this->plugin_url . 'assets/js/bc-assistant-script.js',
+            array('jquery'),
+            filemtime($this->plugin_path . 'assets/js/bc-assistant-script.js'),
+            true
+        );
+        
+        // Przekaż zmienne do JS
+        wp_localize_script('bc-assistant-script', 'bc_assistant_vars', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('bc_assistant_nonce'),
+        ));
+    }
+
     private function should_load_assets() {
         // Zawsze ładuj assety, ponieważ używamy trybu bubble w stopce
         return true;
@@ -171,183 +204,6 @@ class BC_Assistant_Plugin {
         }
         
         return array('context' => $context, 'procedure_name' => $procedure_name);
-    }
-
-    /**
-     * Pobiera treść strony jako kontekst dla asystenta
-     */
-    private function get_page_content_context() {
-        global $post;
-        
-        if (!$post) {
-            return '';
-        }
-        
-        // Pobierz treść podstawową
-        $content = wp_strip_all_tags($post->post_content);
-        $title = get_the_title($post->ID);
-        
-        // Ogranicz długość treści (aby nie przekraczać limitów tokenów)
-        if (strlen($content) > 1000) {
-            $content = substr($content, 0, 1000) . '...';
-        }
-        
-        // Sformatuj kontekst
-        $context = "Tytuł strony: $title\n\nTreść strony: $content";
-        
-        return $context;
-    }
-
-    /**
-     * Pobiera dodatkowy kontekst dla API OpenAI
-     */
-    private function get_additional_context() {
-        // Pobierz podstawowy kontekst ze strony
-        $page_context = $this->get_page_content_context();
-        
-        // Sprawdź, czy jest to strona zabiegu i czy istnieje selektor BC
-        $bc_selector_content = $this->get_bc_selector_content();
-        
-        if (!empty($bc_selector_content)) {
-            $page_context .= "\n\nSzczegóły zabiegu: " . $bc_selector_content;
-        }
-        
-        return $page_context;
-    }
-
-    /**
-     * Pobiera treść z selektora BC (jeśli istnieje na stronie)
-     */
-    private function get_bc_selector_content() {
-        global $post;
-        
-        if (!$post) {
-            return '';
-        }
-        
-        // Sprawdź czy strona zawiera div z klasą bc-content-container (selektor BC)
-        $content = '';
-        
-        // Pobieramy treść elementów z selektora BC bezpośrednio z pamięci podręcznej transient
-        $selector_cache_key = 'bc_selector_content_' . $post->ID;
-        $cached_content = get_transient($selector_cache_key);
-        
-        if ($cached_content !== false) {
-            return $cached_content;
-        }
-        
-        // Musimy pobierać bezpośrednio z DOM strony
-        $dom = new DOMDocument();
-        @$dom->loadHTML(mb_convert_encoding($post->post_content, 'HTML-ENTITIES', 'UTF-8'));
-        $finder = new DomXPath($dom);
-        
-        // Sprawdź czy istnieje kontener BC Selector
-        $containers = $finder->query("//div[contains(@class, 'bc-content-container')]");
-        
-        if ($containers->length > 0) {
-            // Znajdź wszystkie elementy treści
-            $contents = $finder->query("//div[contains(@class, 'bc-content')]");
-            foreach ($contents as $element) {
-                $id = $element->getAttribute('id');
-                $zabieg_name = '';
-                
-                // Próba znalezienia nazwy zabiegu z opcji selecta
-                $select_options = $finder->query("//select[contains(@class, 'bc-select')]/option");
-                foreach ($select_options as $option) {
-                    if ($option->getAttribute('value') == str_replace('content-', '', $id)) {
-                        $zabieg_name = $option->textContent;
-                        break;
-                    }
-                }
-                
-                // Pobierz treść elementu
-                $zabieg_content = $dom->saveHTML($element);
-                $zabieg_content = wp_strip_all_tags($zabieg_content);
-                $zabieg_content = preg_replace('/\s+/', ' ', $zabieg_content);
-                
-                // Ogranicz długość
-                if (strlen($zabieg_content) > 300) {
-                    $zabieg_content = substr($zabieg_content, 0, 300) . '...';
-                }
-                
-                if (!empty($zabieg_name)) {
-                    $content .= "Zabieg: $zabieg_name\n$zabieg_content\n\n";
-                }
-            }
-        }
-        
-        // Alternatywna metoda - szukaj bezpośrednio w HTML (może być bardziej niezawodna)
-        if (empty($content)) {
-            // Poszukaj ręcznie w treści HTML
-            $html = $post->post_content;
-            
-            // Szukaj nazw opcji selektora
-            preg_match_all('/<option value="zabieg-\d+">(.*?)<\/option>/', $html, $zabieg_names);
-            
-            // Szukaj treści każdego zabiegu
-            preg_match_all('/<div id="content-zabieg-\d+" class="bc-content">(.*?)<\/div>/s', $html, $zabieg_contents);
-            
-            if (!empty($zabieg_names[1]) && !empty($zabieg_contents[1])) {
-                for ($i = 0; $i < count($zabieg_names[1]); $i++) {
-                    if (isset($zabieg_contents[1][$i])) {
-                        $zabieg_name = $zabieg_names[1][$i];
-                        $zabieg_content = wp_strip_all_tags($zabieg_contents[1][$i]);
-                        $zabieg_content = preg_replace('/\s+/', ' ', $zabieg_content);
-                        
-                        // Ogranicz długość
-                        if (strlen($zabieg_content) > 300) {
-                            $zabieg_content = substr($zabieg_content, 0, 300) . '...';
-                        }
-                        
-                        $content .= "Zabieg: $zabieg_name\n$zabieg_content\n\n";
-                    }
-                }
-            }
-        }
-        
-        // Alternatywnie, próbuj odczytać bezpośrednio z HTML strony
-        if (empty($content)) {
-            // Próbuj alternatywną metodę - po prostu wyodrębnij całą zawartość bc-content-container
-            preg_match('/<div class="bc-content-container">(.*?)<\/div>/s', $post->post_content, $container_match);
-            if (!empty($container_match[1])) {
-                $container_content = wp_strip_all_tags($container_match[1]);
-                $container_content = preg_replace('/\s+/', ' ', $container_content);
-                $content = "Treść selektora zabiegów:\n" . $container_content;
-            }
-        }
-        
-        // Sprawdź bezpośrednio pliki na serwerze
-        if (empty($content) && has_shortcode($post->post_content, 'bc_selector')) {
-            // Poszukaj w plikach
-            $upload_dir = wp_upload_dir();
-            $selector_dir = $upload_dir['basedir'] . '/bc-selector';
-            
-            if (is_dir($selector_dir)) {
-                $files = scandir($selector_dir);
-                foreach ($files as $file) {
-                    if ($file != '.' && $file != '..' && pathinfo($file, PATHINFO_EXTENSION) == 'html') {
-                        $file_path = $selector_dir . '/' . $file;
-                        $file_content = file_get_contents($file_path);
-                        if ($file_content !== false) {
-                            $zabieg_name = pathinfo($file, PATHINFO_FILENAME);
-                            $zabieg_content = wp_strip_all_tags($file_content);
-                            
-                            // Ogranicz długość
-                            if (strlen($zabieg_content) > 300) {
-                                $zabieg_content = substr($zabieg_content, 0, 300) . '...';
-                            }
-                            
-                            $content .= "Zabieg: $zabieg_name\n$zabieg_content\n\n";
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Zapisz w pamięci podręcznej na godzinę
-        set_transient($selector_cache_key, $content, HOUR_IN_SECONDS);
-        
-        return $content;
     }
 
     public function render_shortcode($atts) {
@@ -439,48 +295,6 @@ class BC_Assistant_Plugin {
         
         return strpos($content, '[bc_assistant') !== false;
     }
-
-    public function enqueue_scripts() {
-        if (!$this->should_load_assets()) {
-            return;
-        }
-
-        // Dołącz jQuery
-        wp_enqueue_script('jquery');
-        
-        // Dołącz FontAwesome (dla ikon)
-        wp_enqueue_style(
-            'font-awesome',
-            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-            array(),
-            '5.15.4'
-        );
-        
-        // Dołącz plik CSS
-        wp_enqueue_style(
-            'bc-assistant-style',
-            $this->plugin_url . 'assets/css/style.css',
-            array(),
-            BC_ASSISTANT_VERSION
-        );
-        
-        // Dołącz plik JS
-        wp_enqueue_script(
-            'bc-assistant-script',
-            $this->plugin_url . 'assets/js/bc-assistant-script.js',
-            array('jquery'),
-            BC_ASSISTANT_VERSION,
-            true
-        );
-        
-        // Przekaż zmienne do JS
-        wp_localize_script('bc-assistant-script', 'bc_assistant_vars', array(
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('bc_assistant_nonce'),
-            'bubble_text' => BC_Assistant_Config::get('button_text'),
-            'bubble_icon' => BC_Assistant_Config::get('bubble_icon')
-        ));
-    }
     
     // Obsługa przesłania zapytania do API ChatGPT
     public function process_chat_request() {
@@ -491,11 +305,10 @@ class BC_Assistant_Plugin {
         }
         
         // Pobierz dane zapytania
-        $message = isset($_POST['message']) ? sanitize_text_field($_POST['message']) : '';
+        $message = sanitize_text_field($_POST['message'] ?? '');
         $conversation_history = isset($_POST['conversation']) ? json_decode(stripslashes($_POST['conversation']), true) : array();
         $context = isset($_POST['context']) ? sanitize_text_field($_POST['context']) : 'default';
         $procedure_name = isset($_POST['procedure_name']) ? sanitize_text_field($_POST['procedure_name']) : '';
-        $additional_context = isset($_POST['additional_context']) ? sanitize_textarea_field($_POST['additional_context']) : '';
         
         if (empty($message)) {
             wp_send_json_error('Wiadomość nie może być pusta');
@@ -516,22 +329,6 @@ class BC_Assistant_Plugin {
             $system_message = BC_Assistant_Config::get('system_message_default');
         }
         
-        // Dodaj instrukcję o zwięzłości
-        $system_message .= " Odpowiadaj krótko i zwięźle, maksymalnie 2-3 zdania, chyba że pytanie wymaga dłuższej odpowiedzi.";
-        
-        // Pobierz dodatkowy kontekst ze strony
-        $page_content_context = $this->get_additional_context();
-        
-        // Dodaj kontekst z selektora jeśli został przekazany
-        if (!empty($additional_context)) {
-            $page_content_context .= "\n\n" . $additional_context;
-        }
-        
-        if (!empty($page_content_context)) {
-            // Dodaj kontekst strony do wiadomości systemowej
-            $system_message .= "\n\nOto informacje o aktualnej stronie, która może pomóc Ci lepiej odpowiedzieć:\n" . $page_content_context;
-        }
-        
         if (empty($api_key)) {
             wp_send_json_error('Klucz API nie został skonfigurowany');
             exit;
@@ -545,9 +342,9 @@ class BC_Assistant_Plugin {
             )
         );
         
-        // Dodaj historię konwersacji (maksymalnie 6 ostatnich wiadomości dla oszczędności tokenów)
+        // Dodaj historię konwersacji (maksymalnie 10 ostatnich wiadomości)
         if (!empty($conversation_history)) {
-            $conversation_history = array_slice($conversation_history, -6);
+            $conversation_history = array_slice($conversation_history, -10);
             foreach ($conversation_history as $msg) {
                 $messages[] = array(
                     'role' => $msg['role'],
@@ -566,8 +363,8 @@ class BC_Assistant_Plugin {
         $request_data = array(
             'model' => $model,
             'messages' => $messages,
-            'temperature' => 0.5,  // Zmniejszona wartość dla bardziej zwięzłych odpowiedzi
-            'max_tokens' => 250    // Zmniejszona wartość dla krótszych odpowiedzi
+            'temperature' => 0.7,
+            'max_tokens' => 500
         );
         
         // Wyślij zapytanie do API OpenAI
@@ -651,44 +448,58 @@ class BC_Assistant_Plugin {
     
     // Wyświetl stronę ustawień
     public function admin_page() {
-        // Sprawdź, czy użytkownik ma uprawnienia
-        if (!current_user_can('manage_options')) {
-            wp_die(__('Nie masz wystarczających uprawnień, aby uzyskać dostęp do tej strony.'));
-        }
-        
         // Zapisz ustawienia jeśli formularz został przesłany
         if (isset($_POST['bc_assistant_save_settings']) && check_admin_referer('bc_assistant_settings')) {
-            // Zapisz podstawowe ustawienia
-            BC_Assistant_Config::set('api_key', sanitize_text_field($_POST['bc_assistant_api_key']));
-            BC_Assistant_Config::set('model', sanitize_text_field($_POST['bc_assistant_model']));
-            
-            // Zapisz wiadomości systemowe
-            BC_Assistant_Config::set('system_message_default', sanitize_textarea_field($_POST['bc_assistant_system_message_default']));
-            BC_Assistant_Config::set('system_message_procedure', sanitize_textarea_field($_POST['bc_assistant_system_message_procedure']));
-            BC_Assistant_Config::set('system_message_contraindications', sanitize_textarea_field($_POST['bc_assistant_system_message_contraindications']));
-            
-            // Zapisz wiadomości powitalne
-            BC_Assistant_Config::set('welcome_message_default', sanitize_textarea_field($_POST['bc_assistant_welcome_message_default']));
-            BC_Assistant_Config::set('welcome_message_procedure', sanitize_textarea_field($_POST['bc_assistant_welcome_message_procedure']));
-            BC_Assistant_Config::set('welcome_message_contraindications', sanitize_textarea_field($_POST['bc_assistant_welcome_message_contraindications']));
-            
-            // Zapisz ustawienia wyświetlania
-BC_Assistant_Config::set('button_text', sanitize_text_field($_POST['bc_assistant_button_text']));
-            BC_Assistant_Config::set('bubble_icon', sanitize_text_field($_POST['bc_assistant_bubble_icon']));
-            BC_Assistant_Config::set('theme', sanitize_text_field($_POST['bc_assistant_theme']));
-            
-            // Zapisz ustawienia zaawansowane
-            BC_Assistant_Config::set('context_detection', isset($_POST['bc_assistant_context_detection']) ? 1 : 0);
-            BC_Assistant_Config::set('enable_logging', isset($_POST['bc_assistant_enable_logging']) ? 1 : 0);
-            
+            update_option('bc_assistant_api_key', sanitize_text_field($_POST['bc_assistant_api_key']));
+            update_option('bc_assistant_model', sanitize_text_field($_POST['bc_assistant_model']));
+            update_option('bc_assistant_sys_message', sanitize_textarea_field($_POST['bc_assistant_sys_message']));
             echo '<div class="notice notice-success is-dismissible"><p>Ustawienia zostały zapisane.</p></div>';
         }
         
         // Pobierz aktualne ustawienia
-        $settings = BC_Assistant_Config::get_all();
+        $api_key = get_option('bc_assistant_api_key', '');
+        $model = get_option('bc_assistant_model', 'gpt-4');
+        $system_message = get_option('bc_assistant_sys_message', 'Jesteś pomocnym asystentem Bielsko Clinic, który odpowiada na pytania dotyczące zabiegów i usług kliniki.');
         
         // Wyświetl formularz ustawień
-        include($this->plugin_path . 'templates/admin.php');
+        ?>
+        <div class="wrap">
+            <h1>BC Assistant - Ustawienia</h1>
+            <form method="post" action="">
+                <?php wp_nonce_field('bc_assistant_settings'); ?>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="bc_assistant_api_key">Klucz API OpenAI</label></th>
+                        <td>
+                            <input type="password" name="bc_assistant_api_key" id="bc_assistant_api_key" value="<?php echo esc_attr($api_key); ?>" class="regular-text" autocomplete="off" />
+                            <p class="description">Wprowadź swój klucz API z OpenAI.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="bc_assistant_model">Model</label></th>
+                        <td>
+                            <select name="bc_assistant_model" id="bc_assistant_model">
+                                <option value="gpt-4" <?php selected($model, 'gpt-4'); ?>>GPT-4</option>
+                                <option value="gpt-4o" <?php selected($model, 'gpt-4o'); ?>>GPT-4o</option>
+                                <option value="gpt-3.5-turbo" <?php selected($model, 'gpt-3.5-turbo'); ?>>GPT-3.5 Turbo</option>
+                            </select>
+                            <p class="description">Wybierz model AI do użycia w czacie.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="bc_assistant_sys_message">Wiadomość systemowa</label></th>
+                        <td>
+                            <textarea name="bc_assistant_sys_message" id="bc_assistant_sys_message" rows="5" class="large-text"><?php echo esc_textarea($system_message); ?></textarea>
+                            <p class="description">Wiadomość systemowa określająca rolę i zachowanie asystenta.</p>
+                        </td>
+                    </tr>
+                </table>
+                <p class="submit">
+                    <input type="submit" name="bc_assistant_save_settings" class="button button-primary" value="Zapisz ustawienia" />
+                </p>
+            </form>
+        </div>
+        <?php
     }
 }
 

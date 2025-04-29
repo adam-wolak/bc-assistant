@@ -19,7 +19,6 @@
             // Dane kontekstowe
             this.context = this.container.attr('data-context') || 'default';
             this.procedureName = this.container.attr('data-procedure') || '';
-            this.additionalContext = '';
             
             // Historia konwersacji
             this.conversationHistory = [];
@@ -35,66 +34,7 @@
             
             // Zainicjuj nasłuchiwacze zdarzeń
             this.initEventListeners();
-            this.checkMobileDisplay();
         }
-/**
- * Sprawdza i naprawia wyświetlanie na urządzeniach mobilnych
- */
-checkMobileDisplay() {
-    // Sprawdź czy jesteśmy na urządzeniu mobilnym
-    const isMobile = window.innerWidth < 768 || 
-                    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-        // Zastosuj poprawki dla urządzeń mobilnych
-        
-        // 1. Upewnij się, że bąbelek jest widoczny
-        const $bubbleButton = $('.bc-assistant-bubble-button');
-        if ($bubbleButton.length) {
-            $bubbleButton.css({
-                'display': 'flex',
-                'visibility': 'visible',
-                'opacity': '1',
-                'position': 'fixed',
-                'bottom': '10px',
-                'right': '10px',
-                'z-index': '999999'
-            });
-        }
-        
-        // 2. Dostosuj rozmiar i położenie okna czatu
-        const $chatWindow = $('.bc-assistant-chat-window');
-        if ($chatWindow.length) {
-            $chatWindow.css({
-                'position': 'fixed',
-                'width': '90vw',
-                'max-width': '350px',
-                'height': '70vh',
-                'bottom': '70px',
-                'right': '10px',
-                'z-index': '999998'
-            });
-        }
-        
-        // 3. Upewnij się, że kontener konwersacji ma odpowiednie przewijanie
-        const $conversation = this.conversation;
-        if ($conversation.length) {
-            $conversation.css({
-                'max-height': 'calc(70vh - 120px)',
-                'overflow-y': 'auto',
-                '-webkit-overflow-scrolling': 'touch',
-                'overscroll-behavior': 'contain'
-            });
-        }
-        
-        // 4. Przenieś bąbelek na koniec body - to pomoże uniknąć problemów z przewijaniem
-        const $container = this.container;
-        if ($container.hasClass('bc-assistant-bubble-container') && $container.parent().prop('tagName') !== 'BODY') {
-            $('body').append($container.detach());
-        }
-    }
-}
-
         
         /**
          * Inicjalizuje nasłuchiwacze zdarzeń
@@ -116,33 +56,6 @@ checkMobileDisplay() {
                 this.style.height = 'auto';
                 this.style.height = (this.scrollHeight) + 'px';
             });
-            
-            // Obsługa zmiany w selektorze BC
-            $('.bc-select').on('change', (e) => {
-                // Pobierz wartość aktualnie wybranego zabiegu
-                const selectedValue = $(e.target).val();
-                const selectedText = $(e.target).find('option:selected').text();
-                
-                if (selectedValue) {
-                    // Poczekaj chwilę, aż zawartość zabiegu się załaduje
-                    setTimeout(() => {
-                        // Znajdź treść wybranego zabiegu
-                        const selectedContent = $('#content-' + selectedValue);
-                        
-                        if (selectedContent.length) {
-                            // Pobierz tekst zawartości
-                            const contentText = selectedContent.text().trim();
-                            
-                            // Zapisz jako dodatkowy kontekst
-                            this.additionalContext = "Aktualnie wybrany zabieg w selektorze: " + selectedText + 
-                                                     "\nTreść wybranego zabiegu: " + contentText;
-                            
-                            console.log('Zmieniono kontekst asystenta na zabieg: ' + selectedText);
-                        }
-                    }, 300);
-                }
-            });
-
         }
         
         /**
@@ -185,8 +98,7 @@ checkMobileDisplay() {
                     message: message,
                     conversation: JSON.stringify(this.conversationHistory),
                     context: this.context,
-                    procedure_name: this.procedureName,
-                    additional_context: this.additionalContext
+                    procedure_name: this.procedureName
                 },
                 success: (response) => {
                     // Ukryj wskaźnik pisania
@@ -256,31 +168,6 @@ checkMobileDisplay() {
             tmp.innerHTML = html;
             return tmp.textContent || tmp.innerText || '';
         }
-        
-        /**
-         * Pobiera aktualnie wybrany kontekst z selektora BC
-         */
-        getCurrentSelectorContext() {
-            // Sprawdź czy jest aktywny selektor na stronie
-            const bcSelect = $('.bc-select');
-            if (bcSelect.length === 0) return '';
-            
-            // Pobierz aktualnie wybrany element
-            const selectedValue = bcSelect.val();
-            if (!selectedValue) return '';
-            
-            const selectedText = bcSelect.find('option:selected').text();
-            const selectedContent = $('#content-' + selectedValue);
-            
-            if (selectedContent.length) {
-                // Pobierz tekst zawartości
-                const contentText = selectedContent.text().trim();
-                return "Aktualnie wybrany zabieg w selektorze: " + selectedText + 
-                      "\nTreść wybranego zabiegu: " + contentText;
-            }
-            
-            return '';
-        }
     }
     
     // Klasa bąbelka czatu
@@ -337,9 +224,6 @@ checkMobileDisplay() {
             this.scrollToBottom();
             this.textInput.focus();
             
-            // Pobierz aktualny kontekst z selektora BC
-            this.additionalContext = this.getCurrentSelectorContext();
-            
             // Zapisz stan
             if (window.localStorage) {
                 localStorage.setItem('bc_assistant_open', '1');
@@ -373,23 +257,13 @@ checkMobileDisplay() {
     
     // Inicjalizacja po załadowaniu dokumentu
     $(document).ready(function() {
-        // Obsługa zmiany w selektorze BC
-        $('.bc-select').on('change', function() {
-            // Wywołaj zdarzenie tylko gdy asystent jest zainicjowany
-            if ($('.bc-assistant-embedded.initialized').length || $('.bc-assistant-bubble-container.initialized').length) {
-                $(document).trigger('bc_selector_changed', [$(this).val(), $(this).find('option:selected').text()]);
-            }
-        });
-        
         // Inicjalizuj wbudowane instancje asystenta
         $('.bc-assistant-embedded').each(function() {
-            $(this).addClass('initialized');
             new BCAssistant($(this));
         });
         
         // Inicjalizuj instancje bąbelków
         $('.bc-assistant-bubble-container').each(function() {
-            $(this).addClass('initialized');
             new BCAssistantBubble($(this));
         });
         

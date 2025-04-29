@@ -21,7 +21,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 15px;
-    background-color: #A67C52; /* Brązowy kolor */
+    background-color: #1e73be;
     color: white;
 }
 
@@ -90,8 +90,6 @@
     overflow: hidden;
     margin-right: 8px;
     flex-shrink: 0;
-    background-color: #A67C52; /* Brązowe tło dla avatara */
-    border: 2px solid #A67C52; /* Obramowanie zgodne z kolorystyką */
 }
 
 .bc-assistant-avatar img {
@@ -100,27 +98,17 @@
     object-fit: cover;
 }
 
-/* Dymki wiadomości */
 .bc-assistant-bubble {
-    background-color: #F5F0E7; /* Jasny beżowy/kremowy */
+    background-color: #e6f2ff;
     border-radius: 18px;
     padding: 12px 15px;
     max-width: 80%;
-    color: #4A3F35; /* Ciemny brąz dla tekstu */
+    color: #333;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
-/* Zwiększona specyficzność dla dymka AI */
-body .bc-assistant-ai .bc-assistant-bubble,
-html .bc-assistant-ai .bc-assistant-bubble,
-.bc-assistant-ai .bc-assistant-bubble {
-    background-color: #F5F0E7; /* Jasny beżowy/kremowy */
-    color: #4A3F35; /* Ciemny brąz dla tekstu */
-}
-
-/* Dymki użytkownika */
 .bc-assistant-user .bc-assistant-bubble {
-    background-color: #A67C52; /* Brązowy */
+    background-color: #1e73be;
     color: white;
     margin-right: 8px;
 }
@@ -136,7 +124,7 @@ html .bc-assistant-ai .bc-assistant-bubble,
 
 .bc-assistant-text {
     flex: 1;
-    border: 1px solid #d6c9b4; /* Beżowe obramowanie */
+    border: 1px solid #ddd;
     border-radius: 18px;
     padding: 10px 15px;
     font-size: 14px;
@@ -145,18 +133,17 @@ html .bc-assistant-ai .bc-assistant-bubble,
     max-height: 120px;
     font-family: inherit;
     outline: none;
-    background-color: #F7F4EF; /* Jasne beżowe tło */
 }
 
 .bc-assistant-text:focus {
-    border-color: #A67C52; /* Brązowe obramowanie przy focus */
-    box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.2);
+    border-color: #1e73be;
+    box-shadow: 0 0 0 2px rgba(30,115,190,0.2);
 }
 
 .bc-assistant-send {
     width: 40px;
     height: 40px;
-    background-color: #A67C52; /* Brązowy */
+    background-color: #1e73be;
     border: none;
     border-radius: 50%;
     display: flex;
@@ -169,7 +156,7 @@ html .bc-assistant-ai .bc-assistant-bubble,
 }
 
 .bc-assistant-send:hover {
-    background-color: #8D6848; /* Ciemniejszy brązowy */
+    background-color: #1765a7;
 }
 
 /* Status */
@@ -209,7 +196,7 @@ html .bc-assistant-ai .bc-assistant-bubble,
     width: 100%;
     max-width: 600px;
     margin: 20px auto;
-    border: 1px solid #d6c9b4; /* Beżowe obramowanie */
+    border: 1px solid #e0e0e0;
 }
 
 /* Bubble mode */
@@ -223,7 +210,7 @@ html .bc-assistant-ai .bc-assistant-bubble,
 .bc-assistant-bubble-button {
     display: flex;
     align-items: center;
-    background-color: #A67C52; /* Brązowy */
+    background-color: #1e73be;
     color: white;
     border-radius: 30px;
     padding: 12px 20px;
@@ -233,7 +220,7 @@ html .bc-assistant-ai .bc-assistant-bubble,
 }
 
 .bc-assistant-bubble-button:hover {
-    background-color: #8D6848; /* Ciemniejszy brąz */
+    background-color: #1765a7;
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0,0,0,0.25);
 }
@@ -250,12 +237,11 @@ html .bc-assistant-ai .bc-assistant-bubble,
 
 .bc-assistant-chat-window {
     display: none;
-    position: fixed;
+    position: absolute;
     bottom: 80px;
-    right: 20px;
+    right: 0;
     width: 350px;
     height: 500px;
-    border: 1px solid #d6c9b4; /* Beżowe obramowanie */
 }
 
 /* Stan otwarty */
@@ -276,7 +262,7 @@ html .bc-assistant-ai .bc-assistant-bubble,
 }
 
 .bc-assistant-dark .bc-assistant-header {
-    background-color: #3A2E24; /* Ciemniejszy brąz dla ciemnego motywu */
+    background-color: #333;
 }
 
 .bc-assistant-dark .bc-assistant-conversation {
@@ -284,12 +270,12 @@ html .bc-assistant-ai .bc-assistant-bubble,
 }
 
 .bc-assistant-dark .bc-assistant-bubble {
-    background-color: #3e372e; /* Ciemny beżowy */
+    background-color: #3a3a3a;
     color: #eee;
 }
 
 .bc-assistant-dark .bc-assistant-user .bc-assistant-bubble {
-    background-color: #A67C52; /* Brązowy */
+    background-color: #1e73be;
     color: white;
 }
 
@@ -304,16 +290,8 @@ html .bc-assistant-ai .bc-assistant-bubble,
     color: #eee;
 }
 
-.bc-assistant-dark .bc-assistant-text:focus {
-    border-color: #A67C52;
-}
-
 .bc-assistant-dark .bc-assistant-send {
-    background-color: #A67C52;
-}
-
-.bc-assistant-dark .bc-assistant-send:hover {
-    background-color: #8D6848;
+    background-color: #1e73be;
 }
 
 .bc-assistant-dark .bc-assistant-status {
@@ -323,60 +301,30 @@ html .bc-assistant-ai .bc-assistant-bubble,
 }
 
 /* Responsywność */
-@media (max-width: 767px) {
+@media (max-width: 480px) {
     .bc-assistant-embedded {
         max-width: 100%;
         margin: 10px;
         border-radius: 10px;
     }
     
-    /* Ulepszenia dla bąbelka na urządzeniach mobilnych */
-    .bc-assistant-bubble-container {
-        position: fixed;
-        bottom: 10px;
-        right: 10px;
-        z-index: 999999; /* Wyższy z-index */
-    }
-    
-    .bc-assistant-bubble-button {
-        padding: 8px 16px; /* Mniejszy padding */
-        font-size: 14px;
-    }
-    
-    .bc-assistant-bubble-icon {
-        font-size: 16px;
-    }
-    
-    /* Okno czatu na urządzeniach mobilnych */
     .bc-assistant-chat-window {
-        position: fixed;
         width: 90vw;
-        max-width: 350px;
-        height: 70vh;
-        max-height: 500px;
+        height: 80vh;
         bottom: 70px;
-        right: 10px;
-        z-index: 999998;
+        right: 0;
     }
     
-    /* Lepsze przewijanie na mobilnych */
-    .bc-assistant-conversation {
-        max-height: calc(70vh - 120px);
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior: contain;
-    }
-}
-
-/* Obsługa małych ekranów */
-@media (max-width: 360px) {
-    .bc-assistant-chat-window {
-        width: calc(100vw - 20px);
-        right: 0;
-        left: 0;
-        margin: 0 auto;
+    .bc-assistant-bubble-container {
+        bottom: 15px;
+        right: 15px;
     }
     
     .bc-assistant-bubble-button {
-        padding: 6px 12px;
+        padding: 10px 16px;
+    }
+    
+    .bc-assistant-bubble-text {
+        font-size: 13px;
     }
 }

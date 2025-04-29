@@ -29,32 +29,6 @@ switch (BC_Assistant_Config::get('bubble_icon')) {
 }
 
 $button_text = esc_html(BC_Assistant_Config::get('button_text'));
-<script type="text/javascript">
-(function() {
-    // Natychmiastowa poprawka kolorów
-    if (typeof jQuery !== 'undefined') {
-        jQuery(document).ready(function($) {
-            // Popraw kolory wiadomości
-            $('.bc-assistant-ai .bc-assistant-bubble').css({
-                'background-color': '#F5F0E7',
-                'color': '#4A3F35'
-            });
-            
-            // Popraw kolory przycisków i nagłówka
-            $('.bc-assistant-header, .bc-assistant-send, .bc-assistant-bubble-button').css({
-                'background-color': '#A67C52'
-            });
-            
-            // Popraw pole tekstowe
-            $('.bc-assistant-text').css({
-                'background-color': '#F7F4EF',
-                'border-color': '#d6c9b4'
-            });
-        });
-    }
-})();
-</script>
-
 ?>
 
 <!-- BC Assistant Bubble -->
