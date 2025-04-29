@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 class BC_Assistant_Config {
     // Domyślne ustawienia
     private static $defaults = array(
-        'api_key' => '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',
+//        'api_key' => //'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//',
         'model' => 'gpt-4o',
         'system_message_default' => 'Jesteś pomocnym asystentem Bielsko Clinic, który odpowiada na pytania dotyczące zabiegów i usług kliniki. Odpowiadaj krótko, rzeczowo i profesjonalnie.',
         'system_message_procedure' => 'Jesteś pomocnym asystentem Bielsko Clinic. Udzielasz informacji o zabiegu: {PROCEDURE_NAME}. Odpowiadaj krótko, rzeczowo i profesjonalnie na temat tego zabiegu, jego przebiegu, efektów, ceny i przeciwwskazań.',
