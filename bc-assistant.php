@@ -201,9 +201,11 @@ class BC_Assistant {
             return;
         }
         
-        // Get message
+        // Get message and context
         $message = isset($_POST['message']) ? sanitize_text_field($_POST['message']) : '';
         $conversation_id = isset($_POST['conversation_id']) ? sanitize_text_field($_POST['conversation_id']) : '';
+        $page_url = isset($_POST['page_url']) ? esc_url_raw($_POST['page_url']) : '';
+        $page_title = isset($_POST['page_title']) ? sanitize_text_field($_POST['page_title']) : '';
         
         if (empty($message)) {
             wp_send_json_error('Message is empty');
@@ -220,7 +222,7 @@ class BC_Assistant {
         );
         
         // Get API response
-        $response = $this->get_openai_response($conversation);
+        $response = $this->get_openai_response($conversation, $page_url, $page_title);
         
         if (is_wp_error($response)) {
             wp_send_json_error($response->get_error_message());
@@ -305,7 +307,7 @@ class BC_Assistant {
     /**
      * Get OpenAI API response
      */
-    private function get_openai_response($conversation) {
+    private function get_openai_response($conversation, $page_url = '', $page_title = '') {
         $api_key = get_option('bc_assistant_api_key');
         
         if (empty($api_key)) {
@@ -318,7 +320,37 @@ class BC_Assistant {
         $model = get_option('bc_assistant_model', 'gpt-3.5-turbo');
         $max_tokens = intval(get_option('bc_assistant_max_tokens', 500));
         $temperature = floatval(get_option('bc_assistant_temperature', 0.7));
-        $system_prompt = get_option('bc_assistant_system_prompt', 'Jesteś pomocnym asystentem Bielsko Clinic.');
+        
+        // Rozszerzony prompt systemowy z lepszymi instrukcjami przeciwdziałającymi konfabulacji
+        $system_prompt = get_option('bc_assistant_system_prompt', 'Jesteś pomocnym asystentem Bielsko Clinic, specjalizującym się w medycynie estetycznej.') . 
+            "\n\nPAMIĘTAJ: Odpowiadaj TYLKO w oparciu o fakty i informacje zawarte w bazie wiedzy Bielsko Clinic. " . 
+            "Jeśli nie posiadasz konkretnej informacji, powiedz 'Przepraszam, nie posiadam informacji na ten temat. " . 
+            "Najlepiej skontaktować się bezpośrednio z kliniką.' " . 
+            "NIGDY nie wymyślaj zabiegów, procedur, cen ani innych informacji o klinice, których nie ma w Twojej bazie wiedzy. " .
+            "Jeśli nie jesteś pewien, zawsze zalecaj kontakt z kliniką.";
+        
+        // Add context about current page
+        if (!empty($page_url)) {
+            $system_prompt .= "\n\nUżytkownik jest obecnie na stronie: " . $page_url;
+            
+            if (!empty($page_title)) {
+                $system_prompt .= "\nTytuł strony: " . $page_title;
+            }
+            
+            // Try to get page content if it's a WordPress page
+            if (function_exists('url_to_postid')) {
+                $post_id = url_to_postid($page_url);
+                if ($post_id) {
+                    $post = get_post($post_id);
+                    if ($post) {
+                        $excerpt = wp_strip_all_tags(get_the_excerpt($post));
+                        if (!empty($excerpt)) {
+                            $system_prompt .= "\nOpis strony: " . $excerpt;
+                        }
+                    }
+                }
+            }
+        }
         
         // Add site information to system prompt if enabled
         $site_prompt = get_option('bc_assistant_site_prompt', '');
