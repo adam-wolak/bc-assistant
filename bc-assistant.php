@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BC Assistant for WordPress
  * Description: ChatGPT integration for your WordPress site
- * Version: 1.0.0
+ * Version: 1.0.5
  * Author: Adam Wolak
  * Text Domain: bc-assistant
  */
@@ -29,7 +29,7 @@ function bc_assistant_activate() {
     add_option('bc_assistant_model', 'gpt-3.5-turbo');
     add_option('bc_assistant_max_tokens', 500);
     add_option('bc_assistant_temperature', 0.7);
-    add_option('bc_assistant_system_prompt', 'Jesteś pomocnym asystentem Bielsko Clinic, specjalizującym się w medycynie estetycznej. Odpowiadaj krótko i na temat.');
+    add_option('bc_assistant_system_prompt', 'Jesteś pomocnym asystentem Bielsko Clinic, specjalizującym się w medycynie estetycznej. Odpowiadaj krótko i na temat. Jeśli nie znasz odpowiedzi, powiedz "Nie posiadam informacji na ten temat, polecam bezpośredni kontakt z kliniką."');
     add_option('bc_assistant_welcome_message', 'Witaj! Jestem asystentem Bielsko Clinic. W czym mogę pomóc?');
     add_option('bc_assistant_save_history', '1');
     add_option('bc_assistant_site_prompt', 'Informacje o Bielsko Clinic i dostępnych usługach...');
@@ -206,6 +206,7 @@ class BC_Assistant {
         $conversation_id = isset($_POST['conversation_id']) ? sanitize_text_field($_POST['conversation_id']) : '';
         $page_url = isset($_POST['page_url']) ? esc_url_raw($_POST['page_url']) : '';
         $page_title = isset($_POST['page_title']) ? sanitize_text_field($_POST['page_title']) : '';
+        $voice_mode = isset($_POST['voice_mode']) ? (bool)$_POST['voice_mode'] : false;
         
         if (empty($message)) {
             wp_send_json_error('Message is empty');
@@ -315,21 +316,22 @@ class BC_Assistant {
         }
         
         // Upewnij się, że klucz API jest poprawnie sformatowany
-        $api_key = trim($api_key); // Usuń białe znaki
+        $api_key = trim($api_key);
         
         $model = get_option('bc_assistant_model', 'gpt-3.5-turbo');
         $max_tokens = intval(get_option('bc_assistant_max_tokens', 500));
         $temperature = floatval(get_option('bc_assistant_temperature', 0.7));
         
-        // Rozszerzony prompt systemowy z lepszymi instrukcjami przeciwdziałającymi konfabulacji
-        $system_prompt = get_option('bc_assistant_system_prompt', 'Jesteś pomocnym asystentem Bielsko Clinic, specjalizującym się w medycynie estetycznej.') . 
-            "\n\nPAMIĘTAJ: Odpowiadaj TYLKO w oparciu o fakty i informacje zawarte w bazie wiedzy Bielsko Clinic. " . 
-            "Jeśli nie posiadasz konkretnej informacji, powiedz 'Przepraszam, nie posiadam informacji na ten temat. " . 
-            "Najlepiej skontaktować się bezpośrednio z kliniką.' " . 
-            "NIGDY nie wymyślaj zabiegów, procedur, cen ani innych informacji o klinice, których nie ma w Twojej bazie wiedzy. " .
-            "Jeśli nie jesteś pewien, zawsze zalecaj kontakt z kliniką.";
+        // Pobierz system prompt z ustawień
+        $system_prompt = get_option('bc_assistant_system_prompt', 'Jesteś pomocnym asystentem Bielsko Clinic.');
         
-        // Add context about current page
+        // Dodaj ostrzeżenie o konfabulacji tylko jeśli nie jest już zawarte w promptcie
+        if (strpos($system_prompt, 'konfabulacji') === false && 
+            strpos($system_prompt, 'nie wymyślaj') === false) {
+            $system_prompt .= "\n\nWażne: Nie wymyślaj informacji o zabiegach, lekach czy procedurach. Jeśli nie znasz odpowiedzi, przyznaj to i zasugeruj kontakt z kliniką.";
+        }
+        
+        // Dodaj kontekst strony
         if (!empty($page_url)) {
             $system_prompt .= "\n\nUżytkownik jest obecnie na stronie: " . $page_url;
             
@@ -337,22 +339,14 @@ class BC_Assistant {
                 $system_prompt .= "\nTytuł strony: " . $page_title;
             }
             
-            // Try to get page content if it's a WordPress page
-            if (function_exists('url_to_postid')) {
-                $post_id = url_to_postid($page_url);
-                if ($post_id) {
-                    $post = get_post($post_id);
-                    if ($post) {
-                        $excerpt = wp_strip_all_tags(get_the_excerpt($post));
-                        if (!empty($excerpt)) {
-                            $system_prompt .= "\nOpis strony: " . $excerpt;
-                        }
-                    }
-                }
+            // Dodaj treść strony
+            $page_content = $this->get_page_content($page_url);
+            if (!empty($page_content)) {
+                $system_prompt .= "\n\nZawartość strony:\n" . $page_content;
             }
         }
         
-        // Add site information to system prompt if enabled
+        // Dodaj pozostałe informacje z zakładek panelu
         $site_prompt = get_option('bc_assistant_site_prompt', '');
         $contraindications = get_option('bc_assistant_contraindications', '');
         $prices = get_option('bc_assistant_prices', '');
@@ -449,6 +443,48 @@ class BC_Assistant {
         update_option('bc_assistant_conversations', $conversations);
         
         return $conversation_id;
+    }
+    
+    /**
+     * Get page content for better context
+     */
+    private function get_page_content($url) {
+        // Jeśli URL jest wewnętrzny, spróbuj pobrać post
+        $post_id = url_to_postid($url);
+        if ($post_id) {
+            $post = get_post($post_id);
+            if ($post) {
+                // Pobierz treść posta
+                $content = $post->post_content;
+                // Usuń tagi HTML
+                $content = wp_strip_all_tags($content, true);
+                // Skróć do rozsądnej długości
+                return substr($content, 0, 2000) . (strlen($content) > 2000 ? '...' : '');
+            }
+        }
+        
+        // Jeśli nie możemy pobrać treści za pomocą WP API, spróbuj pobrać stronę
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; BC Assistant/1.0)');
+            $html = curl_exec($ch);
+            curl_close($ch);
+            
+            if ($html) {
+                // Usuń tagi HTML
+                $content = wp_strip_all_tags($html, true);
+                // Usuń nadmiarowe białe znaki
+                $content = preg_replace('/\s+/', ' ', $content);
+                // Skróć do rozsądnej długości
+                return substr($content, 0, 2000) . (strlen($content) > 2000 ? '...' : '');
+            }
+        }
+        
+        return '';
     }
 }
 

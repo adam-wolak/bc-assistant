@@ -280,4 +280,116 @@
 }
 
 .bc-assistant-voice-title {
-    font-weight: 600
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.bc-assistant-voice-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #A67C52 !important; /* Brązowy kolor */
+    color: white;
+    margin: 10px auto;
+    cursor: pointer;
+}
+
+.bc-assistant-voice-button:hover {
+    background-color: #8D6848 !important; /* Ciemniejszy brązowy */
+}
+
+.bc-assistant-voice-status {
+    font-size: 12px;
+    color: #888;
+    margin-top: 10px;
+}
+
+/* Responsywność dla urządzeń mobilnych */
+@media (max-width: 767px) {
+    /* Upewnij się, że przycisk bąbelka jest widoczny */
+    .bc-assistant-bubble-container .bc-assistant-bubble-button {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        z-index: 9999997 !important;
+        right: 20px !important;
+        bottom: 20px !important;
+        width: 60px !important;
+        height: 60px !important;
+    }
+    
+    /* Okno czatu pojawia się dopiero po kliknięciu */
+    .bc-assistant-chat-window {
+        display: none;
+    }
+    
+    /* Pokaż okno czatu tylko gdy kontener ma klasę open */
+    .bc-assistant-bubble-container.open .bc-assistant-chat-window {
+        display: flex !important;
+        flex-direction: column !important;
+        position: fixed !important;
+        z-index: 9999998 !important;
+        bottom: 80px !important;
+        right: 10px !important;
+        left: 10px !important; 
+        width: calc(100% - 20px) !important;
+        max-width: 100% !important;
+        /* Zmniejszona wysokość okna czatu */
+        height: 70vh !important;
+        max-height: 70vh !important;
+    }
+    
+    /* Poprawione style dla mobilnych - eliminacja "dziury" w pionie */
+    .bc-assistant-messages {
+        flex: 1 !important;
+        max-height: none !important;
+        height: auto !important;
+        min-height: 150px !important; /* Zmniejszona minimalna wysokość */
+        overflow-y: auto !important;
+    }
+    
+    /* Kontener wejściowy przyklejony do dołu */
+    .bc-assistant-input-container {
+        position: relative !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        margin-top: auto !important;
+        height: auto !important;
+    }
+    
+    .bc-assistant-input {
+        font-size: 16px !important; /* Zapobiega powiększaniu się inputu na iOS */
+        min-height: 40px !important;
+    }
+    
+    /* Tryb głosowy na mobilnych */
+    .bc-assistant-voice-mode {
+        width: calc(100% - 40px) !important;
+        left: 10px !important;
+        right: 10px !important;
+        padding: 15px 10px !important;
+    }
+}
+
+/* Admin Panel Styles */
+.bc-assistant-admin .nav-tab-wrapper {
+    margin-bottom: 20px;
+}
+
+.bc-assistant-admin .tab-content {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-top: none;
+}
+
+.bc-assistant-admin .bc-range-value {
+    display: inline-block;
+    margin-left: 10px;
+    min-width: 30px;
+}

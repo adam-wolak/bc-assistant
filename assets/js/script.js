@@ -22,6 +22,8 @@
             this.closeButton = $('.bc-assistant-close');
             this.conversationId = '';
             this.isVoiceMode = false;
+            this.isFullVoiceMode = false;
+            this.isDragging = false;
             
             this.init();
         }
@@ -100,6 +102,9 @@
          * Open chat window
          */
         openChat() {
+            // Reset all states
+            this.resetState();
+            
             this.chatWindow.fadeIn(300);
             this.chatInput.focus();
             
@@ -111,7 +116,7 @@
                 this.container.addClass('open');
             }
             
-            // Scroll to bottom to ensure latest messages are visible
+            // Scroll to bottom
             this.scrollToBottom();
         }
         
@@ -119,7 +124,10 @@
          * Minimize chat window
          */
         minimizeChat() {
-            this.chatWindow.fadeOut(300);
+            this.chatWindow.fadeOut(300, () => {
+                // After fadeout, make sure we can reopen
+                this.resetState();
+            });
             
             // On mobile, remove open class
             if (this.isMobile) {
@@ -131,11 +139,42 @@
          * Close chat window
          */
         closeChat() {
-            this.chatWindow.fadeOut(300);
+            this.chatWindow.fadeOut(300, () => {
+                // After fadeout, make sure we can reopen
+                this.resetState();
+            });
             
             // On mobile, remove open class
             if (this.isMobile) {
                 this.container.removeClass('open');
+            }
+        }
+        
+        /**
+         * Reset all states
+         */
+        resetState() {
+            this.isDragging = false;
+            this.isVoiceMode = false;
+            this.isFullVoiceMode = false;
+            
+            // Remove all events that could interfere
+            $(document).off('mousemove.dragassistant touchmove.dragassistant');
+            $(document).off('mouseup.dragassistant touchend.dragassistant');
+            
+            // Reset any CSS that might interfere
+            $('body').css('user-select', '');
+            
+            // Make sure the chat window has the right position
+            if (window.innerWidth <= 767) {
+                // Mobile position
+                this.chatWindow.css({
+                    position: '',
+                    left: '',
+                    top: '',
+                    right: '',
+                    bottom: ''
+                });
             }
         }
         
@@ -212,9 +251,59 @@
         }
         
         /**
+         * Send voice message without updating chat interface
+         */
+        sendVoiceMessage(message, expectReply = false) {
+            if (!message) return;
+            
+            // Wysyłanie wiadomości bez aktualizacji interfejsu czatu
+            $.ajax({
+                url: bcAssistantData.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'bc_assistant_send_message',
+                    message: message,
+                    conversation_id: this.conversationId,
+                    page_url: window.location.href,
+                    page_title: document.title,
+                    voice_mode: true,
+                    nonce: bcAssistantData.nonce
+                },
+                success: (response) => {
+                    this.voiceMode.show();
+                    
+                    if (response.success) {
+                        // Odtwórz odpowiedź głosowo bez pokazywania czatu
+                        this.speakResponse(response.data.message, expectReply);
+                        
+                        if (!expectReply) {
+                            this.container.find('.bc-assistant-voice-status').text('Naciśnij mikrofon, aby kontynuować');
+                        }
+                        
+                        // Store conversation ID
+                        this.conversationId = response.data.conversation_id;
+                    } else {
+                        this.speakResponse('Przepraszam, wystąpił błąd. Spróbuj ponownie.', false);
+                        this.container.find('.bc-assistant-voice-status').text('Wystąpił błąd. Spróbuj ponownie.');
+                    }
+                    
+                    // Tylko zmień ikonę jeśli nie oczekujemy odpowiedzi
+                    if (!expectReply) {
+                        this.voiceButton.html('<i class="fas fa-microphone"></i>');
+                    }
+                },
+                error: () => {
+                    this.voiceButton.html('<i class="fas fa-microphone"></i>');
+                    this.container.find('.bc-assistant-voice-status').text('Wystąpił błąd. Spróbuj ponownie.');
+                    this.speakResponse('Przepraszam, wystąpił błąd. Spróbuj ponownie.', false);
+                }
+            });
+        }
+        
+        /**
          * Speak response using speech synthesis
          */
-        speakResponse(text) {
+        speakResponse(text, expectReply = true) {
             // Stop current speech if any
             if (window.speechSynthesis.speaking) {
                 window.speechSynthesis.cancel();
@@ -227,6 +316,24 @@
             const polishVoice = this.voices ? this.voices.find(voice => voice.lang.includes('pl')) : null;
             if (polishVoice) {
                 utterance.voice = polishVoice;
+            }
+            
+            // Jeśli oczekujemy odpowiedzi, nasłuchuj zdarzenia końca mowy
+            if (expectReply) {
+                utterance.onend = () => {
+                    // Po zakończeniu mowy, rozpocznij nasłuchiwanie odpowiedzi użytkownika
+                    if (this.isFullVoiceMode) {
+                        setTimeout(() => {
+                            this.container.find('.bc-assistant-voice-status').text('Czekam na Twoją odpowiedź...');
+                            this.voiceButton.html('<i class="fas fa-microphone"></i>');
+                            
+                            // Automatycznie uruchom nasłuchiwanie po krótkiej przerwie
+                            setTimeout(() => {
+                                this.startVoiceRecognition(true); // true oznacza kontynuację konwersacji
+                            }, 1000);
+                        }, 300);
+                    }
+                };
             }
             
             window.speechSynthesis.speak(utterance);
@@ -322,10 +429,23 @@
          * Scroll messages container to bottom
          */
         scrollToBottom() {
-            // Use setTimeout to ensure scrolling happens after DOM update
-            setTimeout(() => {
-                this.messagesContainer.scrollTop(this.messagesContainer[0].scrollHeight);
-            }, 100);
+            // Użyj bardziej niezawodnego podejścia do przewijania
+            try {
+                const messagesContainer = this.messagesContainer[0];
+                if (messagesContainer) {
+                    // Opóźnij przewijanie, aby dać czas na renderowanie
+                    setTimeout(() => {
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        
+                        // Drugie przewinięcie po pełnym renderowaniu
+                        setTimeout(() => {
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        }, 300);
+                    }, 100);
+                }
+            } catch (error) {
+                console.error('Error scrolling to bottom:', error);
+            }
         }
         
         /**
@@ -336,78 +456,96 @@
             
             const $header = element.find('.bc-assistant-header');
             let isDragging = false;
-            let offsetX, offsetY;
-            let wasClick = true; // Track if it was a click or drag
-            let moved = false; // Track if the element was moved
+            let startX, startY;
+            let startPos = { left: 0, top: 0 };
+            let hasMoved = false;
             
-            // Set cursor style for header
+            // Zatrzymaj wszystkie wydarzenia click w nagłówku, aby nie zamykały okna
+            $header.off('click').on('click', function(e) {
+                if (!$(e.target).closest('.bc-assistant-controls').length) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+            
+            // Set cursor style
             $header.css('cursor', 'move');
             
-            // Handle mouse/touch events for dragging
-            $header.on('mousedown touchstart', function(e) {
-                // Don't trigger on controls
+            // Mouse down event
+            $header.off('mousedown touchstart').on('mousedown touchstart', function(e) {
+                // Don't handle events from control buttons
                 if ($(e.target).closest('.bc-assistant-controls').length > 0) {
                     return;
                 }
                 
-                isDragging = true;
-                wasClick = true; // Assume it's a click until moved
-                moved = false; // Reset moved flag
-                
-                const pageX = e.type === 'mousedown' ? e.pageX : e.originalEvent.touches[0].pageX;
-                const pageY = e.type === 'mousedown' ? e.pageY : e.originalEvent.touches[0].pageY;
-                
-                const elementOffset = element.offset();
-                offsetX = pageX - elementOffset.left;
-                offsetY = pageY - elementOffset.top;
-                
                 e.preventDefault();
+                e.stopPropagation();
+                
+                isDragging = true;
+                hasMoved = false;
+                
+                // Get initial positions
+                startX = e.type === 'mousedown' ? e.clientX : e.originalEvent.touches[0].clientX;
+                startY = e.type === 'mousedown' ? e.clientY : e.originalEvent.touches[0].clientY;
+                
+                startPos = {
+                    left: parseInt(element.css('left')) || element.offset().left,
+                    top: parseInt(element.css('top')) || element.offset().top
+                };
+                
+                // Ensure window won't close when dragging
+                $('body').css('user-select', 'none');
             });
             
-            $(document).on('mousemove touchmove', function(e) {
+            // Mouse move event
+            $(document).off('mousemove.dragassistant touchmove.dragassistant').on('mousemove.dragassistant touchmove.dragassistant', function(e) {
                 if (!isDragging) return;
                 
-                // If moved, it's not just a click
-                wasClick = false;
-                moved = true;
+                e.preventDefault();
+                e.stopPropagation();
                 
-                const pageX = e.type === 'mousemove' ? e.pageX : e.originalEvent.touches[0].pageX;
-                const pageY = e.type === 'mousemove' ? e.pageY : e.originalEvent.touches[0].pageY;
+                hasMoved = true;
                 
-                // Change positioning to absolute if it's not already
+                const clientX = e.type === 'mousemove' ? e.clientX : e.originalEvent.touches[0].clientX;
+                const clientY = e.type === 'mousemove' ? e.clientY : e.originalEvent.touches[0].clientY;
+                
+                // Calculate new position
+                const deltaX = clientX - startX;
+                const deltaY = clientY - startY;
+                
+                // Set element to absolute positioning if not already
                 if (element.css('position') !== 'absolute') {
-                    const position = element.position();
+                    const currentOffset = element.offset();
                     element.css({
-                        'position': 'absolute',
-                        'z-index': 9999999,
-                        'left': position.left + 'px',
-                        'top': position.top + 'px',
-                        'right': 'auto',
-                        'bottom': 'auto'
+                        position: 'absolute',
+                        left: currentOffset.left + 'px',
+                        top: currentOffset.top + 'px',
+                        right: 'auto',
+                        bottom: 'auto',
+                        'z-index': 999999
                     });
                 }
                 
-                const windowWidth = $(window).width();
-                const windowHeight = $(window).height();
-                const elementWidth = element.outerWidth();
-                const elementHeight = element.outerHeight();
-                
-                // Calculate new coordinates, ensuring window stays within screen bounds
-                let newLeft = Math.max(0, Math.min(pageX - offsetX, windowWidth - elementWidth));
-                let newTop = Math.max(0, Math.min(pageY - offsetY, windowHeight - elementHeight));
-                
-                // Set new position
+                // Apply new position
                 element.css({
-                    'left': newLeft + 'px',
-                    'top': newTop + 'px'
+                    left: (startPos.left + deltaX) + 'px',
+                    top: (startPos.top + deltaY) + 'px'
                 });
-                
-                e.preventDefault();
             });
             
-            $(document).on('mouseup touchend', function() {
+            // Mouse up event
+            $(document).off('mouseup.dragassistant touchend.dragassistant').on('mouseup.dragassistant touchend.dragassistant', function(e) {
                 if (!isDragging) return;
+                
+                e.preventDefault();
+                
                 isDragging = false;
+                $('body').css('user-select', '');
+                
+                // Prevent window from closing if it was dragged
+                if (hasMoved) {
+                    e.stopPropagation();
+                }
             });
         }
         
@@ -446,22 +584,24 @@
                 }
             });
             
-            // Make sure voice button properly displays chat window
+            // Voice button triggers voice recognition
             this.voiceButton.off('click').on('click', () => {
-                this.voiceMode.hide();
-                this.chatWindow.fadeIn(300);
+                this.voiceMode.show();
+                this.chatWindow.hide(); // Hide chat window in voice mode
                 this.startVoiceRecognition();
-                this.scrollToBottom(); // Ensure messages are visible
             });
         }
         
         /**
          * Start voice recognition with fallback options
          */
-        startVoiceRecognition() {
-            // Show listening status
+        startVoiceRecognition(isContinuation = false) {
+            // Pokaż informację o nasłuchiwaniu
             this.voiceButton.html('<i class="fas fa-spinner fa-spin"></i>');
             this.container.find('.bc-assistant-voice-status').text('Słucham...');
+            
+            // Ustaw flagę trybu głosowego
+            this.isFullVoiceMode = true;
 
             // Check if browser supports Web Speech API
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -475,25 +615,48 @@
             recognition.continuous = false;
             recognition.interimResults = false;
             
+            // Zwiększ timeout nasłuchiwania, aby dać użytkownikowi czas na odpowiedź
+            recognition.maxSpeechTime = 10000; // 10 sekund
+            
             try {
                 recognition.start();
                 
+                // Jeśli nie ma odpowiedzi w ciągu określonego czasu, zatrzymaj nasłuchiwanie
+                const listenTimeout = setTimeout(() => {
+                    if (recognition) {
+                        recognition.stop();
+                        this.voiceButton.html('<i class="fas fa-microphone"></i>');
+                        this.container.find('.bc-assistant-voice-status').text('Nie usłyszałem odpowiedzi. Naciśnij mikrofon, aby kontynuować.');
+                    }
+                }, 15000); // 15 sekund na odpowiedź
+                
                 recognition.onresult = (event) => {
+                    clearTimeout(listenTimeout); // Anuluj timeout
+                    
                     const transcript = event.results[0][0].transcript;
                     
                     // Set flag for voice mode
                     this.isVoiceMode = true;
                     
-                    // Hide voice mode and show chat window
-                    this.voiceMode.hide();
-                    this.chatWindow.show();
-                    
-                    // Set input value and send message
-                    this.chatInput.val(transcript);
-                    this.sendMessage();
+                    if (this.isFullVoiceMode) {
+                        // W pełnym trybie głosowym nie pokazuj interfejsu czatu
+                        this.voiceMode.show();
+                        this.chatWindow.hide(); // Upewnij się, że czat jest ukryty
+                        this.container.find('.bc-assistant-voice-status').text('Przetwarzam pytanie...');
+                        
+                        // Wyślij pytanie bez pokazywania interfejsu czatu
+                        this.sendVoiceMessage(transcript, true); // true oznacza, że oczekujemy odpowiedzi
+                    } else {
+                        // Standardowe zachowanie - pokaż czat
+                        this.voiceMode.hide();
+                        this.chatWindow.show();
+                        this.chatInput.val(transcript);
+                        this.sendMessage();
+                    }
                 };
                 
                 recognition.onerror = (event) => {
+                    clearTimeout(listenTimeout); // Anuluj timeout
                     console.error('Speech recognition error', event.error);
                     
                     // Try OpenAI audio API if Web Speech API fails
@@ -506,8 +669,13 @@
                 };
                 
                 recognition.onend = () => {
-                    this.voiceButton.html('<i class="fas fa-microphone"></i>');
-                    this.container.find('.bc-assistant-voice-status').text('Naciśnij mikrofon, aby mówić');
+                    clearTimeout(listenTimeout); // Anuluj timeout
+                    
+                    // Zresetuj przycisk i status tylko jeśli nie przetwarzamy jeszcze pytania
+                    if (this.container.find('.bc-assistant-voice-status').text() !== 'Przetwarzam pytanie...') {
+                        this.voiceButton.html('<i class="fas fa-microphone"></i>');
+                        this.container.find('.bc-assistant-voice-status').text('Naciśnij mikrofon, aby mówić');
+                    }
                 };
             } catch (error) {
                 console.error('Speech recognition error:', error);
