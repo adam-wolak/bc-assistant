@@ -13,9 +13,18 @@ if (!defined('ABSPATH')) {
 
 // Klasa konfiguracyjna dla BC Assistant
 class BC_Assistant_Config {
+    // Dostępne modele AI
+    public static $available_models = array(
+        'gpt-4o' => 'GPT-4o (flagowy model)',
+        'gpt-4-turbo' => 'GPT-4 Turbo',
+        'gpt-3.5-turbo' => 'GPT-3.5 Turbo',
+        'claude-3-opus-20240229' => 'Claude 3 Opus',
+        'claude-3-sonnet-20240229' => 'Claude 3 Sonnet',
+        'claude-3-haiku-20240307' => 'Claude 3 Haiku'
+    );
+    
     // Domyślne ustawienia
     private static $defaults = array(
-//        'api_key' => //'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//',
         'model' => 'gpt-4o',
         'system_message_default' => 'Jesteś pomocnym asystentem Bielsko Clinic, który odpowiada na pytania dotyczące zabiegów i usług kliniki. Odpowiadaj krótko, rzeczowo i profesjonalnie.',
         'system_message_procedure' => 'Jesteś pomocnym asystentem Bielsko Clinic. Udzielasz informacji o zabiegu: {PROCEDURE_NAME}. Odpowiadaj krótko, rzeczowo i profesjonalnie na temat tego zabiegu, jego przebiegu, efektów, ceny i przeciwwskazań.',
@@ -57,7 +66,84 @@ class BC_Assistant_Config {
      * @return bool Czy ustawienie się powiodło
      */
     public static function set($key, $value) {
-        return update_option('bc_assistant_' . $key, $value);
+        // Dla modelu przeprowadź sanityzację
+        if ($key === 'model') {
+            $value = self::sanitize_model($value);
+        }
+        
+        // Zapisz opcję w bazie danych
+        $result = update_option('bc_assistant_' . $key, $value);
+        
+        // Jeśli zapisano model, spróbuj zaktualizować plik .env
+        if ($key === 'model' && $result) {
+            self::sync_env_file($value);
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Sanityzuje model, aby upewnić się, że jest poprawny
+     * 
+     * @param string $model Model do sanityzacji
+     * @return string Sanityzowany model
+     */
+    public static function sanitize_model($model) {
+        // Sprawdź czy model jest na liście dostępnych modeli
+        if (!array_key_exists($model, self::$available_models)) {
+            // Logowanie dla debugowania
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BC Assistant: Nieprawidłowy model: ' . $model . '. Użyto domyślnego.');
+            }
+            
+            // Jeśli nie, użyj modelu domyślnego
+            return self::$defaults['model'];
+        }
+        
+        return $model;
+    }
+    
+    /**
+     * Synchronizuje model z plikiem .env
+     * 
+     * @param string $model Model do synchronizacji
+     * @return bool Czy synchronizacja się powiodła
+     */
+    private static function sync_env_file($model) {
+        // Sprawdź czy plik .env istnieje
+        $env_file = ABSPATH . '.env';
+        
+        if (!file_exists($env_file) || !is_writable($env_file)) {
+            return false;
+        }
+        
+        // Wczytaj zawartość pliku
+        $env_content = file_get_contents($env_file);
+        
+        // Zaktualizuj model w pliku .env
+        $pattern = '/OPENAI_MODEL=(.+)/';
+        $replacement = 'OPENAI_MODEL=' . $model;
+        
+        if (preg_match($pattern, $env_content)) {
+            // Jeśli model już istnieje, zaktualizuj go
+            $new_content = preg_replace($pattern, $replacement, $env_content);
+        } else {
+            // Jeśli nie, dodaj nową linię
+            $new_content = rtrim($env_content) . "\nOPENAI_MODEL=" . $model . "\n";
+        }
+        
+        // Zapisz plik
+        $result = file_put_contents($env_file, $new_content);
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            if ($result !== false) {
+                error_log('BC Assistant: Zaktualizowano model w pliku .env: ' . $model);
+            } else {
+                error_log('BC Assistant: Nie udało się zaktualizować pliku .env.');
+            }
+        }
+        
+        return $result !== false;
     }
     
     /**
@@ -85,5 +171,33 @@ class BC_Assistant_Config {
                 update_option('bc_assistant_' . $key, $value);
             }
         }
+    }
+    
+    /**
+     * Pobiera listę dostępnych modeli
+     * 
+     * @return array Lista dostępnych modeli
+     */
+    public static function get_available_models() {
+        return self::$available_models;
+    }
+    
+    /**
+     * Pobiera aktualnie wybrany model
+     * 
+     * @return string Aktualnie wybrany model
+     */
+    public static function get_current_model() {
+        return self::get('model');
+    }
+    
+    /**
+     * Pobiera nazwę wyświetlaną modelu
+     * 
+     * @param string $model_key Klucz modelu
+     * @return string Nazwa wyświetlana modelu
+     */
+    public static function get_model_display_name($model_key) {
+        return isset(self::$available_models[$model_key]) ? self::$available_models[$model_key] : 'Nieznany model';
     }
 }

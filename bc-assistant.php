@@ -164,3 +164,599 @@ add_action('plugins_loaded', function() {
         new BC_Assistant();
     }
 });
+<?php
+/**
+ * Kod diagnostyczny do debugowania problemu z modelami w BC Assistant
+
+ */
+
+// Dodaj narzędzie diagnostyczne
+function bc_assistant_add_debug_tool() {
+    // Tylko dla administratorów
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+    
+    // Sprawdź czy uruchomiono narzędzie diagnostyczne
+    if (isset($_GET['bc_debug']) && $_GET['bc_debug'] === 'model') {
+        add_action('admin_notices', 'bc_assistant_debug_output');
+    }
+}
+add_action('admin_init', 'bc_assistant_add_debug_tool');
+
+// Wyświetl informacje diagnostyczne
+function bc_assistant_debug_output() {
+    // Testowy bezpośredni zapis modelu (pomiń standardowy formularz)
+    if (isset($_POST['bc_debug_action']) && $_POST['bc_debug_action'] === 'test_save' && check_admin_referer('bc_debug_nonce')) {
+        if (isset($_POST['test_model'])) {
+            $model = sanitize_text_field($_POST['test_model']);
+            
+            // Wyczyść cache przed zapisem
+            wp_cache_delete('alloptions', 'options');
+            
+            // Zapisz opcję
+            $result = update_option('bc_assistant_model', $model);
+            
+            if ($result) {
+                echo '<div class="notice notice-success"><p>Model zapisany bezpośrednio: <strong>' . esc_html($model) . '</strong></p></div>';
+            } else {
+                echo '<div class="notice notice-warning"><p>Model nie zmienił się lub nie został zapisany.</p></div>';
+            }
+            
+            // Zaloguj dla debugowania
+            error_log('BC Assistant Debug: Model zapisany bezpośrednio: ' . $model . ' (wynik: ' . ($result ? 'sukces' : 'bez zmian') . ')');
+        }
+    }
+    
+    // Wyczyść opcję
+    if (isset($_POST['bc_debug_action']) && $_POST['bc_debug_action'] === 'clear' && check_admin_referer('bc_debug_nonce')) {
+        delete_option('bc_assistant_model');
+        echo '<div class="notice notice-warning"><p>Opcja modelu wyczyszczona!</p></div>';
+    }
+    
+    // Odśwież .env plik
+    if (isset($_POST['bc_debug_action']) && $_POST['bc_debug_action'] === 'refresh_env' && check_admin_referer('bc_debug_nonce')) {
+        // Sprawdź czy plik .env istnieje
+        $env_file = ABSPATH . '.env';
+        
+        if (file_exists($env_file)) {
+            // Spróbuj zaktualizować plik .env
+            $current_model = get_option('bc_assistant_model', 'gpt-4o');
+            
+            // Wczytaj zawartość pliku
+            $env_content = file_get_contents($env_file);
+            
+            // Zaktualizuj model w pliku .env
+            $pattern = '/OPENAI_MODEL=(.+)/';
+            $replacement = 'OPENAI_MODEL=' . $current_model;
+            
+            if (preg_match($pattern, $env_content)) {
+                $new_content = preg_replace($pattern, $replacement, $env_content);
+                $write_result = file_put_contents($env_file, $new_content);
+                
+                if ($write_result !== false) {
+                    echo '<div class="notice notice-success"><p>Plik .env zaktualizowany z modelem: <strong>' . esc_html($current_model) . '</strong></p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>Nie udało się zapisać do pliku .env. Sprawdź uprawnienia.</p></div>';
+                }
+            } else {
+                // Jeśli nie znaleziono linii z modelem, dodaj ją na końcu pliku
+                $new_content = $env_content . "\nOPENAI_MODEL=" . $current_model;
+                $write_result = file_put_contents($env_file, $new_content);
+                
+                if ($write_result !== false) {
+                    echo '<div class="notice notice-success"><p>Dodano model do pliku .env: <strong>' . esc_html($current_model) . '</strong></p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>Nie udało się zapisać do pliku .env. Sprawdź uprawnienia.</p></div>';
+                }
+            }
+        } else {
+            echo '<div class="notice notice-error"><p>Plik .env nie istnieje w katalogu głównym WordPressa.</p></div>';
+        }
+    }
+    
+    // Sprawdź pliki skryptów
+    if (isset($_POST['bc_debug_action']) && $_POST['bc_debug_action'] === 'check_scripts' && check_admin_referer('bc_debug_nonce')) {
+        $script_file = plugin_dir_path(dirname(__FILE__)) . 'bc-assistant/assets/js/script.js';
+        
+        if (file_exists($script_file)) {
+            $script_content = file_get_contents($script_file);
+            
+            // Szukaj wzorców odnoszących się do modelu
+            $model_patterns = [
+                'model:',
+                'gpt-4o',
+                'gpt-4-turbo',
+                'gpt-3.5-turbo',
+                'claude-3',
+            ];
+            
+            $matches = [];
+            foreach ($model_patterns as $pattern) {
+                if (stripos($script_content, $pattern) !== false) {
+                    $matches[] = $pattern;
+                }
+            }
+            
+            if (!empty($matches)) {
+                echo '<div class="notice notice-info"><p>Znaleziono odniesienia do modeli w pliku script.js: <strong>' . esc_html(implode(', ', $matches)) . '</strong></p></div>';
+            } else {
+                echo '<div class="notice notice-info"><p>Nie znaleziono bezpośrednich odniesień do modeli w pliku script.js.</p></div>';
+            }
+        } else {
+            echo '<div class="notice notice-error"><p>Nie znaleziono pliku script.js w katalogu pluginu.</p></div>';
+        }
+    }
+    
+    // Pobierz aktualny model
+    $current_model = get_option('bc_assistant_model');
+    
+    // Sprawdź plik .env
+    $env_model = 'nie znaleziono';
+    $env_file = ABSPATH . '.env';
+    
+    if (file_exists($env_file) && is_readable($env_file)) {
+        $env_content = file_get_contents($env_file);
+        preg_match('/OPENAI_MODEL=(.+)/', $env_content, $matches);
+        
+        if (!empty($matches[1])) {
+            $env_model = trim($matches[1]);
+        }
+    }
+    
+    // Wyświetl panel diagnostyczny
+    ?>
+    <div class="wrap" style="background: #fff; padding: 15px; border: 1px solid #ccd0d4; margin-top: 20px;">
+        <h1>BC Assistant - Diagnostyka</h1>
+        
+        <h2>Aktualny stan opcji</h2>
+        <table class="widefat" style="margin-bottom: 20px;">
+            <thead>
+                <tr>
+                    <th>Źródło</th>
+                    <th>Wartość modelu</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>WordPress Option (get_option)</strong></td>
+                    <td><?php echo esc_html($current_model !== false ? $current_model : '(nie ustawiono)'); ?></td>
+                </tr>
+                <tr>
+                    <td><strong>Plik .env</strong></td>
+                    <td><?php echo esc_html($env_model); ?></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h2>Test bezpośredniego zapisu modelu</h2>
+        <p>Ten formularz zapisuje model bezpośrednio w bazie danych, z pominięciem standardowego formularza:</p>
+        
+        <form method="post" style="margin-bottom: 30px;">
+            <?php wp_nonce_field('bc_debug_nonce'); ?>
+            <select name="test_model" style="min-width: 200px;">
+                <option value="gpt-4o" <?php selected($current_model, 'gpt-4o'); ?>>GPT-4o (flagowy model)</option>
+                <option value="gpt-4-turbo" <?php selected($current_model, 'gpt-4-turbo'); ?>>GPT-4 Turbo</option>
+                <option value="gpt-3.5-turbo" <?php selected($current_model, 'gpt-3.5-turbo'); ?>>GPT-3.5 Turbo</option>
+                <option value="claude-3-opus-20240229" <?php selected($current_model, 'claude-3-opus-20240229'); ?>>Claude 3 Opus</option>
+                <option value="claude-3-sonnet-20240229" <?php selected($current_model, 'claude-3-sonnet-20240229'); ?>>Claude 3 Sonnet</option>
+                <option value="claude-3-haiku-20240307" <?php selected($current_model, 'claude-3-haiku-20240307'); ?>>Claude 3 Haiku</option>
+            </select>
+            <input type="hidden" name="bc_debug_action" value="test_save">
+            <button type="submit" class="button button-primary">Zapisz bezpośrednio</button>
+        </form>
+        
+        <h2>Operacje konserwacyjne</h2>
+        
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 30px;">
+            <!-- Wyczyść opcję -->
+            <form method="post">
+                <?php wp_nonce_field('bc_debug_nonce'); ?>
+                <input type="hidden" name="bc_debug_action" value="clear">
+                <button type="submit" class="button">Wyczyść opcję modelu</button>
+            </form>
+            
+            <!-- Odśwież plik .env -->
+            <form method="post">
+                <?php wp_nonce_field('bc_debug_nonce'); ?>
+                <input type="hidden" name="bc_debug_action" value="refresh_env">
+                <button type="submit" class="button">Zaktualizuj plik .env</button>
+            </form>
+            
+            <!-- Sprawdź pliki skryptów -->
+            <form method="post">
+                <?php wp_nonce_field('bc_debug_nonce'); ?>
+                <input type="hidden" name="bc_debug_action" value="check_scripts">
+                <button type="submit" class="button">Sprawdź script.js</button>
+            </form>
+        </div>
+        
+        <h2>Wszystkie opcje pluginu BC Assistant</h2>
+        <table class="widefat" style="margin-bottom: 20px;">
+            <thead>
+                <tr>
+                    <th>Nazwa opcji</th>
+                    <th>Wartość</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                // Znajdź wszystkie opcje pasujące do wzorca
+                global $wpdb;
+                $similar_options = $wpdb->get_results("SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE '%bc_assistant%'");
+                
+                if (!empty($similar_options)) {
+                    foreach ($similar_options as $option) {
+                        // Ukryj klucz API
+                        $value = ($option->option_name === 'bc_assistant_api_key') ? '(ukryte)' : $option->option_value;
+                        echo '<tr>';
+                        echo '<td>' . esc_html($option->option_name) . '</td>';
+                        echo '<td>' . esc_html($value) . '</td>';
+                        echo '</tr>';
+                    }
+                } else {
+                    echo '<tr><td colspan="2">Nie znaleziono opcji BC Assistant w bazie danych.</td></tr>';
+                }
+                ?>
+            </tbody>
+        </table>
+        
+        <h2>Filtry i hooki mogące wpływać na opcje</h2>
+        <?php
+        global $wp_filter;
+        $relevant_hooks = [
+            'option_bc_assistant_model',
+            'pre_option_bc_assistant_model',
+            'default_option_bc_assistant_model',
+            'pre_update_option_bc_assistant_model',
+            'update_option_bc_assistant_model',
+        ];
+        
+        echo '<ul>';
+        foreach ($relevant_hooks as $hook) {
+            if (isset($wp_filter[$hook])) {
+                echo '<li><strong>' . esc_html($hook) . ':</strong> ';
+                echo count($wp_filter[$hook]) . ' podpiętych funkcji</li>';
+                
+                // Pokaż szczegóły podpiętych funkcji
+                echo '<ul>';
+                foreach ($wp_filter[$hook] as $priority => $callbacks) {
+                    foreach ($callbacks as $name => $callback) {
+                        echo '<li>Priorytet ' . $priority . ': ';
+                        if (is_array($callback['function'])) {
+                            if (is_object($callback['function'][0])) {
+                                echo esc_html(get_class($callback['function'][0]) . '->' . $callback['function'][1]);
+                            } else {
+                                echo esc_html((is_string($callback['function'][0]) ? $callback['function'][0] : 'Array') . '::' . $callback['function'][1]);
+                            }
+                        } else {
+                            echo esc_html(is_string($callback['function']) ? $callback['function'] : 'Closure/Anonymous function');
+                        }
+                        echo '</li>';
+                    }
+                }
+                echo '</ul>';
+            } else {
+                echo '<li><strong>' . esc_html($hook) . ':</strong> Brak podpiętych funkcji</li>';
+            }
+        }
+        echo '</ul>';
+        ?>
+        
+        <h2>Zawartość pliku .env</h2>
+        <?php
+        if (file_exists($env_file) && is_readable($env_file)) {
+            $env_content = file_get_contents($env_file);
+            
+            // Ukryj klucz API przed wyświetleniem
+            $env_content_safe = preg_replace('/(OPENAI_API_KEY=)([^\n]+)/', '$1********', $env_content);
+            
+            echo '<pre style="background: #f0f0f1; padding: 15px; overflow: auto; max-height: 400px;">';
+            echo esc_html($env_content_safe);
+            echo '</pre>';
+        } else {
+            echo '<p>Nie można odczytać pliku .env lub plik nie istnieje.</p>';
+        }
+        ?>
+        
+        <p style="margin-top: 20px;">
+            <a href="<?php echo admin_url('admin.php?page=bc-assistant-settings'); ?>" class="button">Wróć do ustawień</a>
+        </p>
+    </div>
+    <?php
+}
+
+// Dodaj link do narzędzia diagnostycznego w menu admina
+function bc_assistant_add_debug_link($wp_admin_bar) {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+    
+    $wp_admin_bar->add_node([
+        'id'    => 'bc-assistant-debug',
+        'title' => 'BC Assistant Debug',
+        'href'  => admin_url('?bc_debug=model'),
+    ]);
+}
+add_action('admin_bar_menu', 'bc_assistant_add_debug_link', 999);
+<?php
+/**
+ * Kod do dodania do pliku bc-assistant.php
+ * Funkcje do obsługi API z dynamicznym wyborem modelu
+ */
+
+/**
+ * Wysyła wiadomość do API i zwraca odpowiedź
+ *
+ * @param string $message Wiadomość do wysłania
+ * @param string|null $thread_id ID wątku (opcjonalne)
+ * @return array|WP_Error Odpowiedź API lub obiekt błędu
+ */
+function bc_assistant_api_request($message, $thread_id = null) {
+    // Pobierz klucz API
+    $api_key = get_option('bc_assistant_api_key');
+    if (empty($api_key)) {
+        return new WP_Error('missing_api_key', 'Brak klucza API');
+    }
+    
+    // Pobierz aktualnie wybrany model
+    $model = BC_Assistant_Config::get_current_model();
+    
+    // Określ typ API na podstawie modelu
+    $api_type = (strpos($model, 'claude') !== false) ? 'anthropic' : 'openai';
+    
+    // Logowanie dla debugowania
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('BC Assistant: Wywołanie API ' . $api_type . ' z modelem: ' . $model);
+    }
+    
+    // Wybierz odpowiednią metodę API
+    if ($api_type === 'anthropic') {
+        return bc_assistant_call_anthropic_api($message, $model, $api_key, $thread_id);
+    } else {
+        return bc_assistant_call_openai_api($message, $model, $api_key, $thread_id);
+    }
+}
+
+/**
+ * Wywołuje API OpenAI
+ *
+ * @param string $message Wiadomość do wysłania
+ * @param string $model Model do użycia
+ * @param string $api_key Klucz API
+ * @param string|null $thread_id ID wątku (opcjonalne)
+ * @return array|WP_Error Odpowiedź API lub obiekt błędu
+ */
+function bc_assistant_call_openai_api($message, $model, $api_key, $thread_id = null) {
+    // Przygotuj dane zapytania
+    $request_body = array(
+        'model' => $model,
+        'messages' => array(
+            array(
+                'role' => 'system',
+                'content' => BC_Assistant_Config::get('system_message_default')
+            ),
+            array(
+                'role' => 'user',
+                'content' => $message
+            )
+        ),
+        'temperature' => 0.7,
+        'max_tokens' => 1000
+    );
+    
+    // Jeśli istnieje thread_id, pobierz historię wiadomości
+    if ($thread_id) {
+        // Tutaj kod do pobierania historii wiadomości z bazy danych
+        // i dodania ich do tablicy messages
+    }
+    
+    // Wyślij zapytanie do API OpenAI
+    $response = wp_remote_post(
+        'https://api.openai.com/v1/chat/completions',
+        array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'Content-Type' => 'application/json'
+            ),
+            'body' => json_encode($request_body),
+            'timeout' => 60
+        )
+    );
+    
+    // Sprawdź czy zapytanie się powiodło
+    if (is_wp_error($response)) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BC Assistant: Błąd API: ' . $response->get_error_message());
+        }
+        return $response;
+    }
+    
+    // Pobierz kod odpowiedzi
+    $response_code = wp_remote_retrieve_response_code($response);
+    if ($response_code !== 200) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BC Assistant: Błąd API, kod: ' . $response_code);
+        }
+        return new WP_Error(
+            'api_error',
+            'Błąd API: ' . $response_code,
+            array(
+                'code' => $response_code,
+                'response' => wp_remote_retrieve_body($response)
+            )
+        );
+    }
+    
+    // Zdekoduj odpowiedź
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    
+    // Sprawdź czy odpowiedź zawiera wiadomość
+    if (!isset($data['choices'][0]['message']['content'])) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BC Assistant: Nieprawidłowa odpowiedź API');
+        }
+        return new WP_Error('invalid_response', 'Nieprawidłowa odpowiedź API');
+    }
+    
+    // Zwróć odpowiedź
+    return array(
+        'message' => $data['choices'][0]['message']['content'],
+        'thread_id' => $thread_id
+    );
+}
+
+/**
+ * Wywołuje API Anthropic (Claude)
+ *
+ * @param string $message Wiadomość do wysłania
+ * @param string $model Model do użycia
+ * @param string $api_key Klucz API
+ * @param string|null $thread_id ID wątku (opcjonalne)
+ * @return array|WP_Error Odpowiedź API lub obiekt błędu
+ */
+function bc_assistant_call_anthropic_api($message, $model, $api_key, $thread_id = null) {
+    // Przygotuj dane zapytania
+    $request_body = array(
+        'model' => $model,
+        'messages' => array(
+            array(
+                'role' => 'user',
+                'content' => $message
+            )
+        ),
+        'max_tokens' => 1000,
+        'temperature' => 0.7,
+        'system' => BC_Assistant_Config::get('system_message_default')
+    );
+    
+    // Jeśli istnieje thread_id, pobierz historię wiadomości
+    if ($thread_id) {
+        // Tutaj kod do pobierania historii wiadomości z bazy danych
+        // i dodania ich do tablicy messages
+    }
+    
+    // Wyślij zapytanie do API Anthropic
+    $response = wp_remote_post(
+        'https://api.anthropic.com/v1/messages',
+        array(
+            'headers' => array(
+                'x-api-key' => $api_key,
+                'Content-Type' => 'application/json',
+                'anthropic-version' => '2023-06-01'
+            ),
+            'body' => json_encode($request_body),
+            'timeout' => 60
+        )
+    );
+    
+    // Sprawdź czy zapytanie się powiodło
+    if (is_wp_error($response)) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BC Assistant: Błąd API: ' . $response->get_error_message());
+        }
+        return $response;
+    }
+    
+    // Pobierz kod odpowiedzi
+    $response_code = wp_remote_retrieve_response_code($response);
+    if ($response_code !== 200) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BC Assistant: Błąd API, kod: ' . $response_code);
+        }
+        return new WP_Error(
+            'api_error',
+            'Błąd API: ' . $response_code,
+            array(
+                'code' => $response_code,
+                'response' => wp_remote_retrieve_body($response)
+            )
+        );
+    }
+    
+    // Zdekoduj odpowiedź
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    
+    // Sprawdź czy odpowiedź zawiera wiadomość
+    if (!isset($data['content']) || !is_array($data['content']) || empty($data['content'])) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BC Assistant: Nieprawidłowa odpowiedź API Anthropic');
+        }
+        return new WP_Error('invalid_response', 'Nieprawidłowa odpowiedź API');
+    }
+    
+    // Przetwórz odpowiedź (Claude zwraca tablicę bloków)
+    $content = '';
+    foreach ($data['content'] as $block) {
+        if ($block['type'] === 'text') {
+            $content .= $block['text'];
+        }
+    }
+    
+    // Zwróć odpowiedź
+    return array(
+        'message' => $content,
+        'thread_id' => $thread_id
+    );
+}
+
+/**
+ * Handler AJAX dla wysyłania wiadomości do API
+ */
+function bc_assistant_ajax_send_message() {
+    // Sprawdź nonce dla bezpieczeństwa
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bc_assistant_nonce')) {
+        wp_send_json_error('Błąd bezpieczeństwa', 403);
+        return;
+    }
+    
+    // Sprawdź czy wiadomość została przesłana
+    if (!isset($_POST['message']) || empty($_POST['message'])) {
+        wp_send_json_error('Brak wiadomości', 400);
+        return;
+    }
+    
+    $message = sanitize_text_field($_POST['message']);
+    $thread_id = isset($_POST['thread_id']) ? sanitize_text_field($_POST['thread_id']) : null;
+    
+    // Wywołanie API asystenta
+    $response = bc_assistant_api_request($message, $thread_id);
+    
+    if (is_wp_error($response)) {
+        wp_send_json_error($response->get_error_message(), 500);
+        return;
+    }
+    
+    wp_send_json_success($response);
+}
+add_action('wp_ajax_bc_assistant_send_message', 'bc_assistant_ajax_send_message');
+add_action('wp_ajax_nopriv_bc_assistant_send_message', 'bc_assistant_ajax_send_message');
+
+/**
+ * Przekazuje dane konfiguracyjne do JavaScript
+ */
+function bc_assistant_localize_script() {
+    // Sprawdź czy skrypt jest zarejestrowany
+    if (!wp_script_is('bc-assistant-script', 'registered')) {
+        return;
+    }
+    
+    // Pobierz aktualną konfigurację
+    $config = BC_Assistant_Config::get_all();
+    
+    // Dodaj nonce dla bezpieczeństwa
+    $script_data = array(
+        'model' => $config['model'],
+        'position' => $config['display_mode'] === 'bubble' ? $config['bubble_position'] : 'embedded',
+        'title' => 'Asystent Bielsko Clinic',
+        'initialMessage' => $config['welcome_message_default'],
+        'apiEndpoint' => admin_url('admin-ajax.php'),
+        'action' => 'bc_assistant_send_message',
+        'nonce' => wp_create_nonce('bc_assistant_nonce'),
+        'debug' => defined('WP_DEBUG') && WP_DEBUG
+    );
+    
+    // Przekaż dane do skryptu
+    wp_localize_script('bc-assistant-script', 'bcAssistantData', $script_data);
+}
+add_action('wp_enqueue_scripts', 'bc_assistant_localize_script', 99);
