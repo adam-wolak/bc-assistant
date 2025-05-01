@@ -1,0 +1,27 @@
+# Ignoruj plik z danymi wrażliwymi
+.env
+
+# Ignoruj pliki IDE/edytorów
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Ignoruj katalogi node_modules jeśli są używane
+node_modules/
+vendor/
+
+# Ignoruj pliki systemowe
+.DS_Store
+Thumbs.db
+
+# Ignoruj pliki cache WordPressa
+*.log
+wp-config.php
+wp-content/advanced-cache.php
+wp-content/backup-db/
+wp-content/backups/
+wp-content/blogs.dir/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/uploads/

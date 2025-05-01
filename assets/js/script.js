@@ -20,7 +20,8 @@
             this.sendButton = $('.bc-assistant-send');
             this.minimizeButton = $('.bc-assistant-minimize');
             this.closeButton = $('.bc-assistant-close');
-            this.conversationId = '';
+            this.conversationId = localStorage.getItem('bc_assistant_conversation_id') || '';
+            this.threadId = localStorage.getItem('bc_assistant_thread_id') || ''; // Dodane dla OpenAI Threads API
             this.isVoiceMode = false;
             this.isFullVoiceMode = false;
             this.isDragging = false;
@@ -214,6 +215,7 @@
                     action: 'bc_assistant_send_message',
                     message: message,
                     conversation_id: this.conversationId,
+                    thread_id: this.threadId, // Dodane dla Threads API
                     page_url: currentPageUrl,
                     page_title: currentPageTitle,
                     nonce: bcAssistantData.nonce
@@ -231,8 +233,17 @@
                             this.speakResponse(response.data.message);
                         }
                         
-                        // Store conversation ID
-                        this.conversationId = response.data.conversation_id;
+                        // Store conversation or thread ID
+                        if (response.data.conversation_id) {
+                            this.conversationId = response.data.conversation_id;
+                            localStorage.setItem('bc_assistant_conversation_id', this.conversationId);
+                        }
+                        
+                        // Obsługa thread_id z odpowiedzi
+                        if (response.data.thread_id) {
+                            this.threadId = response.data.thread_id;
+                            localStorage.setItem('bc_assistant_thread_id', this.threadId);
+                        }
                     } else {
                         // Show error message
                         this.addMessage('Przepraszam, wystąpił błąd. Spróbuj ponownie później.', 'assistant');
@@ -264,6 +275,7 @@
                     action: 'bc_assistant_send_message',
                     message: message,
                     conversation_id: this.conversationId,
+                    thread_id: this.threadId, // Dodane dla Threads API
                     page_url: window.location.href,
                     page_title: document.title,
                     voice_mode: true,
@@ -280,8 +292,17 @@
                             this.container.find('.bc-assistant-voice-status').text('Naciśnij mikrofon, aby kontynuować');
                         }
                         
-                        // Store conversation ID
-                        this.conversationId = response.data.conversation_id;
+                        // Store conversation or thread ID
+                        if (response.data.conversation_id) {
+                            this.conversationId = response.data.conversation_id;
+                            localStorage.setItem('bc_assistant_conversation_id', this.conversationId);
+                        }
+                        
+                        // Obsługa thread_id z odpowiedzi
+                        if (response.data.thread_id) {
+                            this.threadId = response.data.thread_id;
+                            localStorage.setItem('bc_assistant_thread_id', this.threadId);
+                        }
                     } else {
                         this.speakResponse('Przepraszam, wystąpił błąd. Spróbuj ponownie.', false);
                         this.container.find('.bc-assistant-voice-status').text('Wystąpił błąd. Spróbuj ponownie.');
@@ -426,26 +447,46 @@
         }
         
         /**
-         * Scroll messages container to bottom
+         * Scroll messages container to bottom - ULEPSZONA WERSJA
          */
         scrollToBottom() {
-            // Użyj bardziej niezawodnego podejścia do przewijania
-            try {
-                const messagesContainer = this.messagesContainer[0];
-                if (messagesContainer) {
-                    // Opóźnij przewijanie, aby dać czas na renderowanie
-                    setTimeout(() => {
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        
-                        // Drugie przewinięcie po pełnym renderowaniu
-                        setTimeout(() => {
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        }, 300);
-                    }, 100);
-                }
-            } catch (error) {
-                console.error('Error scrolling to bottom:', error);
+            // Bardziej niezawodne przewijanie z różnymi poziomami zabezpieczeń
+            if (!this.messagesContainer || !this.messagesContainer.length) {
+                return;
             }
+            
+            const scrollContainer = this.messagesContainer[0];
+            
+            // Natychmiastowe przewinięcie
+            try {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            } catch (e) {
+                console.error('Initial scroll failed:', e);
+            }
+            
+            // Przewijanie z małym opóźnieniem (pozwala na renderowanie DOM)
+            setTimeout(() => {
+                try {
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                } catch (e) {
+                    console.error('Delayed scroll failed:', e);
+                }
+                
+                // Dodatkowe przewinięcie po dłuższym czasie (na wypadek obrazów, itp.)
+                setTimeout(() => {
+                    try {
+                        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                        
+                        // Jeśli nadal nie przewija na sam dół, wymuszamy to przez scrollIntoView
+                        const lastMessage = this.messagesContainer.children().last();
+                        if (lastMessage.length) {
+                            lastMessage[0].scrollIntoView({ behavior: 'auto', block: 'end' });
+                        }
+                    } catch (e) {
+                        console.error('Final scroll failed:', e);
+                    }
+                }, 300);
+            }, 50);
         }
         
         /**

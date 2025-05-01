@@ -23,7 +23,8 @@ jQuery(document).ready(function($) {
     const $messages = $('.bc-assistant-shortcode-messages');
     const $input = $('.bc-assistant-shortcode-input');
     const $sendButton = $('.bc-assistant-shortcode-send');
-    let conversationId = '';
+    let conversationId = localStorage.getItem('bc_assistant_shortcode_conversation_id') || '';
+    let threadId = localStorage.getItem('bc_assistant_shortcode_thread_id') || ''; // Dodany thread_id
     
     // Show welcome message
     addMessage(bcAssistantData.welcomeMessage, 'assistant');
@@ -62,6 +63,10 @@ jQuery(document).ready(function($) {
         // Show loading indicator
         showLoading();
         
+        // Get current page context
+        const currentPageUrl = window.location.href;
+        const currentPageTitle = document.title;
+        
         // Send message to server
         $.ajax({
             url: bcAssistantData.ajaxUrl,
@@ -70,6 +75,9 @@ jQuery(document).ready(function($) {
                 action: 'bc_assistant_send_message',
                 message: message,
                 conversation_id: conversationId,
+                thread_id: threadId, // Dodane thread_id
+                page_url: currentPageUrl,
+                page_title: currentPageTitle,
                 nonce: bcAssistantData.nonce
             },
             success: function(response) {
@@ -80,8 +88,17 @@ jQuery(document).ready(function($) {
                     // Add assistant response to chat
                     addMessage(response.data.message, 'assistant');
                     
-                    // Store conversation ID
-                    conversationId = response.data.conversation_id;
+                    // Store conversation ID or thread ID
+                    if (response.data.conversation_id) {
+                        conversationId = response.data.conversation_id;
+                        localStorage.setItem('bc_assistant_shortcode_conversation_id', conversationId);
+                    }
+                    
+                    // Obsługa thread_id z odpowiedzi
+                    if (response.data.thread_id) {
+                        threadId = response.data.thread_id;
+                        localStorage.setItem('bc_assistant_shortcode_thread_id', threadId);
+                    }
                 } else {
                     // Show error message
                     addMessage('Przepraszam, wystąpił błąd. Spróbuj ponownie później.', 'assistant');
@@ -120,8 +137,8 @@ jQuery(document).ready(function($) {
         // Add message to container
         $messages.append($messageElement);
         
-        // Scroll to bottom
-        $messages.scrollTop($messages[0].scrollHeight);
+        // Scroll to bottom - POPRAWIONA WERSJA
+        scrollToBottom();
     }
     
     function formatMessage(message) {
@@ -162,11 +179,51 @@ jQuery(document).ready(function($) {
         $messages.append($loadingElement);
         
         // Scroll to bottom
-        $messages.scrollTop($messages[0].scrollHeight);
+        scrollToBottom();
     }
     
     function hideLoading() {
         $('.bc-assistant-shortcode-loading').remove();
+    }
+    
+    // Poprawiona funkcja przewijania
+    function scrollToBottom() {
+        if (!$messages.length) {
+            return;
+        }
+        
+        const scrollContainer = $messages[0];
+        
+        // Natychmiastowe przewinięcie
+        try {
+            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        } catch (e) {
+            console.error('Initial scroll failed:', e);
+        }
+        
+        // Przewijanie z małym opóźnieniem (pozwala na renderowanie DOM)
+        setTimeout(() => {
+            try {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            } catch (e) {
+                console.error('Delayed scroll failed:', e);
+            }
+            
+            // Dodatkowe przewinięcie po dłuższym czasie (na wypadek obrazów, itp.)
+            setTimeout(() => {
+                try {
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                    
+                    // Jeśli nadal nie przewija na sam dół, wymuszamy to przez scrollIntoView
+                    const lastMessage = $messages.children().last();
+                    if (lastMessage.length) {
+                        lastMessage[0].scrollIntoView({ behavior: 'auto', block: 'end' });
+                    }
+                } catch (e) {
+                    console.error('Final scroll failed:', e);
+                }
+            }, 300);
+        }, 50);
     }
 });
 </script>
