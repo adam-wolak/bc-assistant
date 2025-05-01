@@ -65,7 +65,47 @@ class BC_Assistant {
      * Register plugin settings
      */
     public function register_settings() {
-        register_setting('bc_assistant_options', 'bc_assistant_options');
+        // Rejestracja indywidualnych ustawień
+        register_setting(
+            'bc_assistant_settings',
+            'bc_assistant_model',
+            [
+                'sanitize_callback' => array('BC_Assistant_Config', 'sanitize_model'),
+                'default' => 'gpt-4o',
+            ]
+        );
+        
+        register_setting(
+            'bc_assistant_settings',
+            'bc_assistant_api_key',
+            [
+                'sanitize_callback' => 'sanitize_text_field',
+            ]
+        );
+        
+        register_setting(
+            'bc_assistant_settings',
+            'bc_assistant_system_message_default',
+            [
+                'sanitize_callback' => 'sanitize_textarea_field',
+            ]
+        );
+        
+        register_setting(
+            'bc_assistant_settings',
+            'bc_assistant_welcome_message_default',
+            [
+                'sanitize_callback' => 'sanitize_text_field',
+            ]
+        );
+        
+        register_setting(
+            'bc_assistant_settings',
+            'bc_assistant_display_mode',
+            [
+                'sanitize_callback' => 'sanitize_text_field',
+            ]
+        );
     }
 
     /**
@@ -90,8 +130,7 @@ class BC_Assistant {
         if (!current_user_can('manage_options')) {
             return;
         }
-        // Fetch existing options or defaults
-        $options = get_option('bc_assistant_options', array());
+        
         include BC_ASSISTANT_PATH . 'templates/admin.php';
     }
 
@@ -105,22 +144,29 @@ class BC_Assistant {
             array(),
             BC_ASSISTANT_VERSION
         );
+        
+        // Dołącz tylko script.js
         wp_enqueue_script(
             'bc-assistant-script',
-            BC_ASSISTANT_URL . 'assets/js/bc-assistant-script.js',
+            BC_ASSISTANT_URL . 'assets/js/script.js',
             array('jquery'),
             BC_ASSISTANT_VERSION,
             true
         );
-        wp_enqueue_script(
-            'bc-assistant-init',
-            BC_ASSISTANT_URL . 'assets/js/script.js',
-            array('bc-assistant-script'),
-            BC_ASSISTANT_VERSION,
-            true
-        );
-        wp_localize_script('bc-assistant-init', 'BC_Assistant_Settings', array(
-            'ajax_url'     => admin_url('admin-ajax.php'),
+        
+        // Pobierz konfigurację
+        $config = BC_Assistant_Config::get_all();
+        
+        // Przekaż dane do skryptu
+        wp_localize_script('bc-assistant-script', 'bcAssistantData', array(
+            'model' => $config['model'],
+            'position' => isset($config['bubble_position']) ? $config['bubble_position'] : 'bottom-right',
+            'title' => 'Asystent Bielsko Clinic',
+            'initialMessage' => $config['welcome_message_default'],
+            'apiEndpoint' => admin_url('admin-ajax.php'),
+            'action' => 'bc_assistant_send_message',
+            'nonce' => wp_create_nonce('bc_assistant_nonce'),
+            'debug' => defined('WP_DEBUG') && WP_DEBUG,
             'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
         ));
     }
@@ -135,9 +181,11 @@ class BC_Assistant {
             array(),
             BC_ASSISTANT_VERSION
         );
+        
+        // Dołącz script.js do panelu administracyjnego
         wp_enqueue_script(
             'bc-assistant-admin-script',
-            BC_ASSISTANT_URL . 'assets/js/bc-assistant-script.js',
+            BC_ASSISTANT_URL . 'assets/js/script.js',
             array('jquery'),
             BC_ASSISTANT_VERSION,
             true
@@ -150,9 +198,9 @@ class BC_Assistant {
     public function render_chat() {
         // Prepare template variables
         $config = new BC_Assistant_Config();
-        $theme = $config->get_theme();
-        $page_context = $config->get_page_context();
-        include BC_ASSISTANT_PATH . 'templates/assistant-bubble.php';
+        $theme = $config->get('theme');
+        $page_context = 'default';
+        include BC_ASSISTANT_PATH . 'templates/bubble.php';
     }
 }
 
@@ -164,10 +212,9 @@ add_action('plugins_loaded', function() {
         new BC_Assistant();
     }
 });
-<?php
+
 /**
  * Kod diagnostyczny do debugowania problemu z modelami w BC Assistant
-
  */
 
 // Dodaj narzędzie diagnostyczne
@@ -460,7 +507,7 @@ function bc_assistant_debug_output() {
         ?>
         
         <p style="margin-top: 20px;">
-            <a href="<?php echo admin_url('admin.php?page=bc-assistant-settings'); ?>" class="button">Wróć do ustawień</a>
+            <a href="<?php echo admin_url('admin.php?page=bc-assistant'); ?>" class="button">Wróć do ustawień</a>
         </p>
     </div>
     <?php
@@ -479,9 +526,8 @@ function bc_assistant_add_debug_link($wp_admin_bar) {
     ]);
 }
 add_action('admin_bar_menu', 'bc_assistant_add_debug_link', 999);
-<?php
+
 /**
- * Kod do dodania do pliku bc-assistant.php
  * Funkcje do obsługi API z dynamicznym wyborem modelu
  */
 
@@ -494,7 +540,7 @@ add_action('admin_bar_menu', 'bc_assistant_add_debug_link', 999);
  */
 function bc_assistant_api_request($message, $thread_id = null) {
     // Pobierz klucz API
-    $api_key = get_option('bc_assistant_api_key');
+    $api_key = BC_Assistant_Config::get('api_key');
     if (empty($api_key)) {
         return new WP_Error('missing_api_key', 'Brak klucza API');
     }
@@ -678,85 +724,217 @@ function bc_assistant_call_anthropic_api($message, $model, $api_key, $thread_id 
     $data = json_decode(wp_remote_retrieve_body($response), true);
     
     // Sprawdź czy odpowiedź zawiera wiadomość
-    if (!isset($data['content']) || !is_array($data['content']) || empty($data['content'])) {
+    if (!isset($data['content'][0]['text'])) {
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('BC Assistant: Nieprawidłowa odpowiedź API Anthropic');
         }
-        return new WP_Error('invalid_response', 'Nieprawidłowa odpowiedź API');
-    }
-    
-    // Przetwórz odpowiedź (Claude zwraca tablicę bloków)
-    $content = '';
-    foreach ($data['content'] as $block) {
-        if ($block['type'] === 'text') {
-            $content .= $block['text'];
-        }
+        return new WP_Error('invalid_response', 'Nieprawidłowa odpowiedź API Anthropic');
     }
     
     // Zwróć odpowiedź
     return array(
-        'message' => $content,
+        'message' => $data['content'][0]['text'],
         'thread_id' => $thread_id
     );
 }
 
 /**
- * Handler AJAX dla wysyłania wiadomości do API
+ * Obsługa AJAX dla wysyłania wiadomości
  */
 function bc_assistant_ajax_send_message() {
     // Sprawdź nonce dla bezpieczeństwa
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bc_assistant_nonce')) {
-        wp_send_json_error('Błąd bezpieczeństwa', 403);
-        return;
+        wp_send_json_error(array('message' => 'Błąd weryfikacji bezpieczeństwa'));
+        exit;
     }
     
-    // Sprawdź czy wiadomość została przesłana
-    if (!isset($_POST['message']) || empty($_POST['message'])) {
-        wp_send_json_error('Brak wiadomości', 400);
-        return;
-    }
-    
-    $message = sanitize_text_field($_POST['message']);
+    // Pobierz wiadomość i thread_id
+    $message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
     $thread_id = isset($_POST['thread_id']) ? sanitize_text_field($_POST['thread_id']) : null;
     
-    // Wywołanie API asystenta
-    $response = bc_assistant_api_request($message, $thread_id);
-    
-    if (is_wp_error($response)) {
-        wp_send_json_error($response->get_error_message(), 500);
-        return;
+    if (empty($message)) {
+        wp_send_json_error(array('message' => 'Wiadomość nie może być pusta'));
+        exit;
     }
     
+    // Wyślij wiadomość do API
+    $response = bc_assistant_api_request($message, $thread_id);
+    
+    // Sprawdź czy wystąpił błąd
+    if (is_wp_error($response)) {
+        $error_message = $response->get_error_message();
+        $error_data = $response->get_error_data();
+        
+        $debug_info = '';
+        if (defined('WP_DEBUG') && WP_DEBUG && $error_data) {
+            $debug_info = ' Szczegóły: ' . print_r($error_data, true);
+        }
+        
+        wp_send_json_error(array(
+            'message' => 'Błąd API: ' . $error_message . $debug_info
+        ));
+        exit;
+    }
+    
+    // Zwróć odpowiedź
     wp_send_json_success($response);
+    exit;
 }
 add_action('wp_ajax_bc_assistant_send_message', 'bc_assistant_ajax_send_message');
 add_action('wp_ajax_nopriv_bc_assistant_send_message', 'bc_assistant_ajax_send_message');
 
 /**
- * Przekazuje dane konfiguracyjne do JavaScript
+ * Dodaj shortcode do wyświetlania czatu
  */
-function bc_assistant_localize_script() {
-    // Sprawdź czy skrypt jest zarejestrowany
-    if (!wp_script_is('bc-assistant-script', 'registered')) {
+function bc_assistant_shortcode($atts) {
+    $atts = shortcode_atts(array(
+        'title' => 'Asystent',
+        'placeholder' => 'Wpisz swoją wiadomość...',
+        'welcome' => '',
+    ), $atts, 'bc_assistant');
+    
+    ob_start();
+    include BC_ASSISTANT_PATH . 'templates/embedded.php';
+    return ob_get_clean();
+}
+add_shortcode('bc_assistant', 'bc_assistant_shortcode');
+
+/**
+ * Dodaj atrybut defer do skryptów JS
+ */
+function bc_assistant_defer_scripts($tag, $handle, $src) {
+    $defer_scripts = array(
+        'bc-assistant-script',
+    );
+    
+    if (in_array($handle, $defer_scripts)) {
+        return str_replace(' src', ' defer src', $tag);
+    }
+    
+    return $tag;
+}
+add_filter('script_loader_tag', 'bc_assistant_defer_scripts', 10, 3);
+
+/**
+ * Dodaj link do ustawień na stronie pluginów
+ */
+function bc_assistant_plugin_action_links($links) {
+    $settings_link = '<a href="' . admin_url('admin.php?page=bc-assistant') . '">Ustawienia</a>';
+    array_unshift($links, $settings_link);
+    return $links;
+}
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'bc_assistant_plugin_action_links');
+
+/**
+ * Sprawdź czy wszystkie wymagane ustawienia są skonfigurowane
+ */
+function bc_assistant_check_settings() {
+    $api_key = BC_Assistant_Config::get('api_key');
+    
+    if (empty($api_key)) {
+        add_action('admin_notices', 'bc_assistant_api_key_notice');
+    }
+}
+add_action('admin_init', 'bc_assistant_check_settings');
+
+/**
+ * Powiadomienie o braku klucza API
+ */
+function bc_assistant_api_key_notice() {
+    if (!current_user_can('manage_options')) {
         return;
     }
     
-    // Pobierz aktualną konfigurację
-    $config = BC_Assistant_Config::get_all();
+    $settings_url = admin_url('admin.php?page=bc-assistant');
     
-    // Dodaj nonce dla bezpieczeństwa
-    $script_data = array(
-        'model' => $config['model'],
-        'position' => $config['display_mode'] === 'bubble' ? $config['bubble_position'] : 'embedded',
-        'title' => 'Asystent Bielsko Clinic',
-        'initialMessage' => $config['welcome_message_default'],
-        'apiEndpoint' => admin_url('admin-ajax.php'),
-        'action' => 'bc_assistant_send_message',
-        'nonce' => wp_create_nonce('bc_assistant_nonce'),
-        'debug' => defined('WP_DEBUG') && WP_DEBUG
+    ?>
+    <div class="notice notice-warning">
+        <p>
+            <strong>BC Assistant:</strong> 
+            Skonfiguruj klucz API aby móc korzystać z asystenta. 
+            <a href="<?php echo esc_url($settings_url); ?>">Przejdź do ustawień</a>
+        </p>
+    </div>
+    <?php
+}
+
+/**
+ * Dodaj prosty debugger dla zalogowanych administratorów
+ */
+function bc_assistant_add_debug_info($content) {
+    if (!is_user_logged_in() || !current_user_can('manage_options')) {
+        return $content;
+    }
+    
+    // Sprawdź czy włączono debugowanie
+    if (!defined('WP_DEBUG') || !WP_DEBUG) {
+        return $content;
+    }
+    
+    // Dodaj informacje dla administratorów na końcu treści
+    $debug = '';
+    $debug .= '<div style="margin-top: 50px; padding: 20px; background-color: #f8f8f8; border: 1px solid #ddd;">';
+    $debug .= '<h3>BC Assistant - Debug Info (tylko dla administratorów)</h3>';
+    $debug .= '<p>Model: ' . esc_html(BC_Assistant_Config::get_current_model()) . '</p>';
+    $debug .= '<p>API Key: ' . (BC_Assistant_Config::get('api_key') ? 'Skonfigurowany' : 'Brak') . '</p>';
+    
+    // Sprawdź plik .env
+    $env_file = ABSPATH . '.env';
+    if (file_exists($env_file) && is_readable($env_file)) {
+        $env_content = file_get_contents($env_file);
+        if (preg_match('/OPENAI_MODEL=(.+)/', $env_content, $matches)) {
+            $debug .= '<p>.env Model: ' . esc_html(trim($matches[1])) . '</p>';
+        }
+    }
+    
+    $debug .= '<p><a href="' . esc_url(admin_url('?bc_debug=model')) . '">Otwórz narzędzie diagnostyczne</a></p>';
+    $debug .= '</div>';
+    
+    return $content . $debug;
+}
+add_filter('the_content', 'bc_assistant_add_debug_info', 999);
+
+/**
+ * Dodaj obsługę CORS dla API
+ */
+function bc_assistant_add_cors_headers() {
+    // Sprawdź czy to żądanie do naszego API
+    if (!empty($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], site_url()) !== false) {
+        header('Access-Control-Allow-Origin: ' . esc_url_raw(site_url()));
+        header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Headers: X-Requested-With, Content-Type, X-WP-Nonce');
+    }
+}
+add_action('init', 'bc_assistant_add_cors_headers');
+
+/**
+ * Dodaj wsparcie dla przycisku w edytorze Gutenberg
+ */
+function bc_assistant_register_gutenberg_button() {
+    if (!function_exists('register_block_type')) {
+        return;
+    }
+    
+    wp_register_script(
+        'bc-assistant-gutenberg',
+        BC_ASSISTANT_URL . 'assets/js/gutenberg.js',
+        array('wp-blocks', 'wp-element', 'wp-editor'),
+        BC_ASSISTANT_VERSION,
+        true
     );
     
-    // Przekaż dane do skryptu
-    wp_localize_script('bc-assistant-script', 'bcAssistantData', $script_data);
+    register_block_type('bc-assistant/chat-button', array(
+        'editor_script' => 'bc-assistant-gutenberg',
+    ));
 }
-add_action('wp_enqueue_scripts', 'bc_assistant_localize_script', 99);
+add_action('init', 'bc_assistant_register_gutenberg_button');
+
+/**
+ * Dodaj aktualizację automatyczną
+ */
+function bc_assistant_check_for_updates() {
+    // Ta funkcja będzie zaimplementowana w przyszłych wersjach
+    // Sprawdzanie aktualizacji i pobieranie nowych wersji pluginu
+}
+add_action('admin_init', 'bc_assistant_check_for_updates');
