@@ -30,15 +30,53 @@ require_once BC_ASSISTANT_PATH . 'includes/config.php';
  */
 function bc_assistant_load_env() {
     $dotenv = BC_ASSISTANT_PATH . '.env';
-    if (file_exists($dotenv)) {
-        $vars = @parse_ini_file($dotenv, false, INI_SCANNER_RAW);
-        if (is_array($vars)) {
-            foreach ($vars as $key => $value) {
-                // Strip surrounding quotes if present
+    
+    // Sprawdź czy plik istnieje i jest czytelny
+    if (file_exists($dotenv) && is_readable($dotenv)) {
+        // Logowanie dla debugowania
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BC Assistant: .env file found at: ' . $dotenv);
+        }
+        
+        // Wczytaj zawartość pliku
+        $env_content = file_get_contents($dotenv);
+        
+        // Przetwórz każdą linię
+        $lines = explode("\n", $env_content);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            
+            // Pomiń puste linie i komentarze
+            if (empty($line) || strpos($line, '#') === 0) {
+                continue;
+            }
+            
+            // Podziel na klucz i wartość
+            $pos = strpos($line, '=');
+            if ($pos !== false) {
+                $key = trim(substr($line, 0, $pos));
+                $value = trim(substr($line, $pos + 1));
+                
+                // Usuń cudzysłowy
                 $value = trim($value, "'\"");
+                
+                // Ustaw zmienną środowiskową
                 if (!getenv($key)) {
                     putenv("{$key}={$value}");
+                    
+                    // Logowanie dla debugowania
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('BC Assistant: Set environment variable: ' . $key);
+                    }
                 }
+            }
+        }
+    } else {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            if (!file_exists($dotenv)) {
+                error_log('BC Assistant: .env file NOT found at: ' . $dotenv);
+            } elseif (!is_readable($dotenv)) {
+                error_log('BC Assistant: .env file exists but is not readable at: ' . $dotenv);
             }
         }
     }
@@ -610,7 +648,7 @@ function bc_assistant_call_openai_api($message, $model, $api_key, $thread_id = n
         )
     );
     
-    // Sprawdź czy zapytanie się powiodło
+// Sprawdź czy zapytanie się powiodło
     if (is_wp_error($response)) {
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('BC Assistant: Błąd API: ' . $response->get_error_message());
@@ -653,133 +691,213 @@ function bc_assistant_call_openai_api($message, $model, $api_key, $thread_id = n
 }
 
 /**
- * Wywołuje API Anthropic (Claude)
+ * Wywołuje API OpenAI Assistants
  *
  * @param string $message Wiadomość do wysłania
- * @param string $model Model do użycia
  * @param string $api_key Klucz API
+ * @param string $assistant_id ID asystenta
  * @param string|null $thread_id ID wątku (opcjonalne)
  * @return array|WP_Error Odpowiedź API lub obiekt błędu
  */
-function bc_assistant_call_anthropic_api($message, $model, $api_key, $thread_id = null) {
-    // Przygotuj dane zapytania
-    $request_body = array(
-        'model' => $model,
-        'messages' => array(
+function bc_assistant_call_openai_assistants_api($message, $api_key, $assistant_id, $thread_id = null) {
+    // Jeśli nie mamy thread_id, utwórz nowy wątek
+    if (empty($thread_id)) {
+        // Utwórz nowy wątek
+        $thread_response = wp_remote_post(
+            'https://api.openai.com/v1/threads',
             array(
-                'role' => 'user',
-                'content' => $message
+                'headers' => array(
+                    'Authorization' => 'Bearer ' . $api_key,
+                    'Content-Type' => 'application/json',
+                    'OpenAI-Beta' => 'assistants=v1'
+                ),
+                'body' => json_encode(array()),
+                'timeout' => 30
             )
-        ),
-        'max_tokens' => 1000,
-        'temperature' => 0.7,
-        'system' => BC_Assistant_Config::get('system_message_default')
-    );
-    
-    // Jeśli istnieje thread_id, pobierz historię wiadomości
-    if ($thread_id) {
-        // Tutaj kod do pobierania historii wiadomości z bazy danych
-        // i dodania ich do tablicy messages
+        );
+        
+        // Obsługa błędów
+        if (is_wp_error($thread_response)) {
+            error_log('BC Assistant: Error creating thread: ' . $thread_response->get_error_message());
+            return $thread_response;
+        }
+        
+        // Pobierz ID wątku
+        $thread_data = json_decode(wp_remote_retrieve_body($thread_response), true);
+        if (!isset($thread_data['id'])) {
+            error_log('BC Assistant: Invalid thread response: ' . wp_remote_retrieve_body($thread_response));
+            return new WP_Error('invalid_response', 'Invalid thread response');
+        }
+        
+        $thread_id = $thread_data['id'];
+        error_log('BC Assistant: Created new thread: ' . $thread_id);
     }
     
-    // Wyślij zapytanie do API Anthropic
-    $response = wp_remote_post(
-        'https://api.anthropic.com/v1/messages',
+    // Dodaj wiadomość do wątku
+    $message_response = wp_remote_post(
+        'https://api.openai.com/v1/threads/' . $thread_id . '/messages',
         array(
             'headers' => array(
-                'x-api-key' => $api_key,
+                'Authorization' => 'Bearer ' . $api_key,
                 'Content-Type' => 'application/json',
-                'anthropic-version' => '2023-06-01'
+                'OpenAI-Beta' => 'assistants=v1'
             ),
-            'body' => json_encode($request_body),
+            'body' => json_encode(array(
+                'role' => 'user',
+                'content' => $message
+            )),
+            'timeout' => 30
+        )
+    );
+    
+    // Obsługa błędów
+    if (is_wp_error($message_response)) {
+        error_log('BC Assistant: Error adding message: ' . $message_response->get_error_message());
+        return $message_response;
+    }
+    
+    // Uruchom asystenta
+    $run_response = wp_remote_post(
+        'https://api.openai.com/v1/threads/' . $thread_id . '/runs',
+        array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'Content-Type' => 'application/json',
+                'OpenAI-Beta' => 'assistants=v1'
+            ),
+            'body' => json_encode(array(
+                'assistant_id' => $assistant_id
+            )),
             'timeout' => 60
         )
     );
     
-    // Sprawdź czy zapytanie się powiodło
-    if (is_wp_error($response)) {
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('BC Assistant: Błąd API: ' . $response->get_error_message());
-        }
-        return $response;
+    // Obsługa błędów
+    if (is_wp_error($run_response)) {
+        error_log('BC Assistant: Error starting run: ' . $run_response->get_error_message());
+        return $run_response;
     }
     
-    // Pobierz kod odpowiedzi
-    $response_code = wp_remote_retrieve_response_code($response);
-    if ($response_code !== 200) {
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('BC Assistant: Błąd API, kod: ' . $response_code);
-        }
-        return new WP_Error(
-            'api_error',
-            'Błąd API: ' . $response_code,
+    // Pobierz ID uruchomienia
+    $run_data = json_decode(wp_remote_retrieve_body($run_response), true);
+    if (!isset($run_data['id'])) {
+        error_log('BC Assistant: Invalid run response: ' . wp_remote_retrieve_body($run_response));
+        return new WP_Error('invalid_response', 'Invalid run response');
+    }
+    
+    $run_id = $run_data['id'];
+    error_log('BC Assistant: Started run: ' . $run_id);
+    
+    // Czekaj na zakończenie uruchomienia
+    $status = '';
+    $max_retries = 15; // Maksymalna liczba prób
+    $retry_count = 0;
+    
+    while ($retry_count < $max_retries) {
+        // Pobierz status uruchomienia
+        $status_response = wp_remote_get(
+            'https://api.openai.com/v1/threads/' . $thread_id . '/runs/' . $run_id,
             array(
-                'code' => $response_code,
-                'response' => wp_remote_retrieve_body($response)
+                'headers' => array(
+                    'Authorization' => 'Bearer ' . $api_key,
+                    'Content-Type' => 'application/json',
+                    'OpenAI-Beta' => 'assistants=v1'
+                ),
+                'timeout' => 30
             )
         );
+        
+        // Obsługa błędów
+        if (is_wp_error($status_response)) {
+            error_log('BC Assistant: Error checking run status: ' . $status_response->get_error_message());
+            return $status_response;
+        }
+        
+        // Pobierz status
+        $status_data = json_decode(wp_remote_retrieve_body($status_response), true);
+        if (!isset($status_data['status'])) {
+            error_log('BC Assistant: Invalid status response: ' . wp_remote_retrieve_body($status_response));
+            return new WP_Error('invalid_response', 'Invalid status response');
+        }
+        
+        $status = $status_data['status'];
+        error_log('BC Assistant: Run status: ' . $status);
+        
+        // Sprawdź czy uruchomienie zakończyło się
+        if ($status === 'completed') {
+            break;
+        } elseif ($status === 'failed' || $status === 'cancelled') {
+            error_log('BC Assistant: Run failed or cancelled: ' . wp_remote_retrieve_body($status_response));
+            return new WP_Error('run_failed', 'Run failed or cancelled');
+        }
+        
+        // Poczekaj przed kolejną próbą
+        sleep(1);
+        $retry_count++;
     }
     
-    // Zdekoduj odpowiedź
-    $data = json_decode(wp_remote_retrieve_body($response), true);
+    // Jeśli przekroczyliśmy maksymalną liczbę prób, zwróć błąd
+    if ($retry_count >= $max_retries) {
+        error_log('BC Assistant: Run timed out');
+        return new WP_Error('run_timeout', 'Run timed out');
+    }
     
-    // Sprawdź czy odpowiedź zawiera wiadomość
-    if (!isset($data['content'][0]['text'])) {
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('BC Assistant: Nieprawidłowa odpowiedź API Anthropic');
+    // Pobierz wiadomości asystenta
+    $messages_response = wp_remote_get(
+        'https://api.openai.com/v1/threads/' . $thread_id . '/messages',
+        array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'Content-Type' => 'application/json',
+                'OpenAI-Beta' => 'assistants=v1'
+            ),
+            'timeout' => 30
+        )
+    );
+    
+    // Obsługa błędów
+    if (is_wp_error($messages_response)) {
+        error_log('BC Assistant: Error getting messages: ' . $messages_response->get_error_message());
+        return $messages_response;
+    }
+    
+    // Pobierz wiadomości
+    $messages_data = json_decode(wp_remote_retrieve_body($messages_response), true);
+    if (!isset($messages_data['data']) || !is_array($messages_data['data']) || empty($messages_data['data'])) {
+        error_log('BC Assistant: Invalid messages response: ' . wp_remote_retrieve_body($messages_response));
+        return new WP_Error('invalid_response', 'Invalid messages response');
+    }
+    
+    // Znajdź ostatnią wiadomość asystenta
+    $assistant_message = null;
+    foreach ($messages_data['data'] as $message_item) {
+        if ($message_item['role'] === 'assistant') {
+            $assistant_message = $message_item;
+            break;
         }
-        return new WP_Error('invalid_response', 'Nieprawidłowa odpowiedź API Anthropic');
+    }
+    
+    if (!$assistant_message || !isset($assistant_message['content']) || empty($assistant_message['content'])) {
+        error_log('BC Assistant: No assistant message found');
+        return new WP_Error('no_assistant_message', 'No assistant message found');
+    }
+    
+    // Pobierz treść wiadomości
+    $message_content = '';
+    foreach ($assistant_message['content'] as $content_item) {
+        if ($content_item['type'] === 'text') {
+            $message_content = $content_item['text']['value'];
+            break;
+        }
     }
     
     // Zwróć odpowiedź
     return array(
-        'message' => $data['content'][0]['text'],
+        'message' => $message_content,
         'thread_id' => $thread_id
     );
 }
 
-/**
- * Obsługa AJAX dla wysyłania wiadomości
- */
-function bc_assistant_ajax_send_message() {
-    // Sprawdź nonce dla bezpieczeństwa
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bc_assistant_nonce')) {
-        wp_send_json_error(array('message' => 'Błąd weryfikacji bezpieczeństwa'));
-        exit;
-    }
-    
-    // Pobierz wiadomość i thread_id
-    $message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
-    $thread_id = isset($_POST['thread_id']) ? sanitize_text_field($_POST['thread_id']) : null;
-    
-    if (empty($message)) {
-        wp_send_json_error(array('message' => 'Wiadomość nie może być pusta'));
-        exit;
-    }
-    
-    // Wyślij wiadomość do API
-    $response = bc_assistant_api_request($message, $thread_id);
-    
-    // Sprawdź czy wystąpił błąd
-    if (is_wp_error($response)) {
-        $error_message = $response->get_error_message();
-        $error_data = $response->get_error_data();
-        
-        $debug_info = '';
-        if (defined('WP_DEBUG') && WP_DEBUG && $error_data) {
-            $debug_info = ' Szczegóły: ' . print_r($error_data, true);
-        }
-        
-        wp_send_json_error(array(
-            'message' => 'Błąd API: ' . $error_message . $debug_info
-        ));
-        exit;
-    }
-    
-    // Zwróć odpowiedź
-    wp_send_json_success($response);
-    exit;
-}
 add_action('wp_ajax_bc_assistant_send_message', 'bc_assistant_ajax_send_message');
 add_action('wp_ajax_nopriv_bc_assistant_send_message', 'bc_assistant_ajax_send_message');
 

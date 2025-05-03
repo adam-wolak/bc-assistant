@@ -334,3 +334,124 @@
         padding: 0 10px;
     }
 }
+/* Style dla trybu głosowego */
+.bc-assistant-voice-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.bc-assistant-voice-button {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #4A90E2;
+    color: white;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.bc-assistant-voice-button:hover {
+    transform: scale(1.1);
+}
+
+.bc-assistant-voice-button.recording {
+    background-color: #E24A4A;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.bc-assistant-speech-bubble {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    max-width: 300px;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 9998;
+    transition: opacity 0.5s ease;
+}
+
+.bc-assistant-speech-bubble.user {
+    background-color: #E3F2FD;
+    color: #333;
+    border-bottom-right-radius: 0;
+}
+
+.bc-assistant-speech-bubble.assistant {
+    background-color: #4A90E2;
+    color: white;
+    border-bottom-left-radius: 0;
+}
+
+.bc-assistant-speech-bubble.loading {
+    background-color: #F5F5F5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+}
+
+.bc-assistant-loading-dots {
+    display: flex;
+}
+
+.bc-assistant-loading-dots span {
+    width: 8px;
+    height: 8px;
+    margin: 0 3px;
+    background-color: #A67C52;
+    border-radius: 50%;
+    animation: bc-assistant-loading 1.4s infinite ease-in-out both;
+}
+
+.bc-assistant-loading-dots span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.bc-assistant-loading-dots span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.bc-assistant-speech-bubble.fade-out {
+    opacity: 0;
+}
+
+/* Przycisk połączenia z recepcją */
+.bc-assistant-call-button {
+    position: fixed;
+    bottom: 150px;
+    right: 20px;
+    background-color: #28a745;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    border: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    z-index: 9997;
+}
+
+.bc-assistant-call-button i {
+    margin-right: 8px;
+}
