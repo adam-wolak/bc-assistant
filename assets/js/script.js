@@ -166,7 +166,7 @@ setupEventListeners() {
             this.sendMessage();
         }
     });
-}
+} // Koniec setupEventListeners()
 
 setupDraggable() {
     const header = this.window.querySelector('.bc-assistant-header');
@@ -219,7 +219,7 @@ setupDraggable() {
     
     // Ustaw początkowy kursor
     header.style.cursor = 'grab';
-}
+} // Koniec setupDraggable()
         
         // Obsługa klawisza Enter w polu wiadomości
         this.inputField.addEventListener('keydown', (e) => {
