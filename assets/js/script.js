@@ -153,11 +153,20 @@ init() {
         document.body.appendChild(this.container);
     }
     
-    setupEventListeners() {
-        // Kliknięcie bąbelka
-        this.bubble.addEventListener('click', () => {
-            this.toggleWindow();
-        });
+setupEventListeners() {
+    // Kliknięcie bąbelka
+    this.bubble.addEventListener('click', () => {
+        this.toggleWindow();
+    });
+    
+    // Obsługa klawisza Enter w polu wiadomości
+    this.inputField.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            this.sendMessage();
+        }
+    });
+}
 
 setupDraggable() {
     const header = this.window.querySelector('.bc-assistant-header');
