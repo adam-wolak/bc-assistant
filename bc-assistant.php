@@ -180,7 +180,7 @@ class BC_Assistant {
             'bc-assistant-style',
             BC_ASSISTANT_URL . 'assets/css/style.css',
             array(),
-            BC_ASSISTANT_VERSION
+            BC_ASSISTANT_VERSION . '.' . time() // Dodaj timestamp, aby wymusić odświeżenie
         );
         
         // Dołącz tylko script.js
@@ -188,7 +188,7 @@ class BC_Assistant {
             'bc-assistant-script',
             BC_ASSISTANT_URL . 'assets/js/script.js',
             array('jquery'),
-            BC_ASSISTANT_VERSION,
+            BC_ASSISTANT_VERSION . '.' . time(), // Dodaj timestamp, aby wymusić odświeżenie
             true
         );
         
@@ -577,21 +577,23 @@ add_action('admin_bar_menu', 'bc_assistant_add_debug_link', 999);
  * @return array|WP_Error Odpowiedź API lub obiekt błędu
  */
 function bc_assistant_api_request($message, $thread_id = null) {
-    // Pobierz klucz API
     $api_key = BC_Assistant_Config::get('api_key');
     if (empty($api_key)) {
+        error_log('BC Assistant: Missing API key');
         return new WP_Error('missing_api_key', 'Brak klucza API');
     }
     
     // Pobierz aktualnie wybrany model
     $model = BC_Assistant_Config::get_current_model();
+    error_log('BC Assistant: Current model: ' . $model);
     
     // Określ typ API na podstawie modelu
     $api_type = (strpos($model, 'claude') !== false) ? 'anthropic' : 'openai';
+    error_log('BC Assistant: API type: ' . $api_type);
     
     // Logowanie dla debugowania
     if (defined('WP_DEBUG') && WP_DEBUG) {
-        error_log('BC Assistant: Wywołanie API ' . $api_type . ' z modelem: ' . $model);
+        error_log('BC Assistant: Calling API ' . $api_type . ' with model: ' . $model);
     }
     
     // Wybierz odpowiednią metodę API
@@ -896,6 +898,60 @@ function bc_assistant_call_openai_assistants_api($message, $api_key, $assistant_
         'message' => $message_content,
         'thread_id' => $thread_id
     );
+}
+
+/**
+ * Obsługa AJAX dla wysyłania wiadomości
+ */
+function bc_assistant_ajax_send_message() {
+    // Dodajmy logowanie dla debugowania
+    error_log('BC Assistant: AJAX message received');
+    
+    // Sprawdź nonce dla bezpieczeństwa
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bc_assistant_nonce')) {
+        error_log('BC Assistant: Nonce verification failed');
+        wp_send_json_error(array('message' => 'Błąd weryfikacji bezpieczeństwa'));
+        exit;
+    }
+    
+    // Pobierz wiadomość i thread_id
+    $message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
+    $thread_id = isset($_POST['thread_id']) ? sanitize_text_field($_POST['thread_id']) : null;
+    
+    if (empty($message)) {
+        error_log('BC Assistant: Empty message');
+        wp_send_json_error(array('message' => 'Wiadomość nie może być pusta'));
+        exit;
+    }
+    
+    // Loguj model
+    error_log('BC Assistant: Using model: ' . BC_Assistant_Config::get_current_model());
+    
+    // Wyślij wiadomość do API
+    $response = bc_assistant_api_request($message, $thread_id);
+    
+    // Sprawdź czy wystąpił błąd
+    if (is_wp_error($response)) {
+        $error_message = $response->get_error_message();
+        $error_data = $response->get_error_data();
+        
+        error_log('BC Assistant: API Error: ' . $error_message);
+        
+        $debug_info = '';
+        if (defined('WP_DEBUG') && WP_DEBUG && $error_data) {
+            $debug_info = ' Szczegóły: ' . print_r($error_data, true);
+            error_log('BC Assistant: Error details: ' . $debug_info);
+        }
+        
+        wp_send_json_error(array(
+            'message' => 'Przepraszam, wystąpił błąd. Spróbuj ponownie.'
+        ));
+        exit;
+    }
+    
+    // Zwróć odpowiedź
+    wp_send_json_success($response);
+    exit;
 }
 
 add_action('wp_ajax_bc_assistant_send_message', 'bc_assistant_ajax_send_message');

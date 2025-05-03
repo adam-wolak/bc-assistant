@@ -3,6 +3,9 @@
  * Poprawiona wersja z dynamicznym wyborem modelu
  */
 
+// Zapisz oryginalną instancję jQuery, aby uniknąć konfliktów
+var jQueryBC = jQuery.noConflict(true);
+
 (function($) {
     "use strict";
     
@@ -54,22 +57,23 @@ class BCAssistant {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
     
-    init() {
-        // Na urządzeniach mobilnych użyj trybu głosowego, jeśli został wybrany
-        if (this.isMobileDevice && this.config.displayMode === 'voice') {
-            this.initVoiceAssistant();
-        } else {
-            // Standardowa inicjalizacja czatu
-            this.createElements();
-            this.setupEventListeners();
-            this.addMessage('assistant', this.config.initialMessage);
-        }
-        
-        // Zaloguj inicjalizację
-        if (this.config.debug) {
-            console.log("BC Assistant initialized");
-        }
+init() {
+    // Na urządzeniach mobilnych użyj trybu głosowego, jeśli został wybrany
+    if (this.isMobileDevice && this.config.displayMode === 'voice') {
+        this.initVoiceAssistant();
+    } else {
+        // Standardowa inicjalizacja czatu
+        this.createElements();
+        this.setupEventListeners();
+        this.setupDraggable(); // Dodaj tę linię
+        this.addMessage('assistant', this.config.initialMessage);
     }
+    
+    // Zaloguj inicjalizację
+    if (this.config.debug) {
+        console.log("BC Assistant initialized");
+    }
+}
     
     createElements() {
         // Tworzenie głównego kontenera
@@ -154,6 +158,59 @@ class BCAssistant {
         this.bubble.addEventListener('click', () => {
             this.toggleWindow();
         });
+
+setupDraggable() {
+    const header = this.window.querySelector('.bc-assistant-header');
+    
+    if (!header) return;
+    
+    let isDragging = false;
+    let offsetX, offsetY;
+    
+    header.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        
+        // Zapisz pozycję kliknięcia względem okna
+        const rect = this.window.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        
+        // Zmień kursor podczas przeciągania
+        header.style.cursor = 'grabbing';
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        // Ustaw nową pozycję okna
+        const x = e.clientX - offsetX;
+        const y = e.clientY - offsetY;
+        
+        // Ogranicz pozycję do widocznego obszaru
+        const maxX = window.innerWidth - this.window.offsetWidth;
+        const maxY = window.innerHeight - this.window.offsetHeight;
+        
+        const boundedX = Math.max(0, Math.min(x, maxX));
+        const boundedY = Math.max(0, Math.min(y, maxY));
+        
+        this.window.style.left = boundedX + 'px';
+        this.window.style.top = boundedY + 'px';
+        this.window.style.right = 'auto';
+        this.window.style.bottom = 'auto';
+    });
+    
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        
+        // Przywróć normalny kursor
+        if (header) {
+            header.style.cursor = 'grab';
+        }
+    });
+    
+    // Ustaw początkowy kursor
+    header.style.cursor = 'grab';
+}
         
         // Obsługa klawisza Enter w polu wiadomości
         this.inputField.addEventListener('keydown', (e) => {

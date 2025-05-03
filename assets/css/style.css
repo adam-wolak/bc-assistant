@@ -36,13 +36,14 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background-color: #4A90E2;
+    background-color: #A67C52; /* Zmień na kolor Bielsko Clinic */
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
+    z-index: 9997; /* Zwiększ z-index, aby był wyższy niż Droplabs */
 }
 
 .bc-assistant-bubble:hover {
@@ -77,7 +78,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    z-index: 9998;
+    z-index: 9998; /* Zwiększ z-index, aby był wyższy niż Droplabs */
     box-sizing: border-box;
 }
 
@@ -104,7 +105,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 15px;
-    background-color: #4A90E2;
+    background-color: #A67C52; /* Zmień na kolor Bielsko Clinic */
     color: #fff;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
@@ -160,7 +161,7 @@
 }
 
 .bc-message-user .bc-message-content {
-    background-color: #4A90E2;
+    background-color: #A67C52; /* Zmień na kolor Bielsko Clinic */
     color: #fff;
     border-bottom-right-radius: 5px;
 }
@@ -192,7 +193,7 @@
 }
 
 .bc-assistant-send {
-    background-color: #4A90E2;
+    background-color: #A67C52; /* Zmień na kolor Bielsko Clinic */
     color: #fff;
     border: none;
     border-radius: 20px;
@@ -204,7 +205,7 @@
 }
 
 .bc-assistant-send:hover {
-    background-color: #3A80D2;
+    background-color: #8D6848;
 }
 
 /* Wskaźnik pisania */
