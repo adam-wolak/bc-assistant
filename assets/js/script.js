@@ -1,10 +1,7 @@
 /**
  * BC Assistant - skrypt główny
- * Poprawiona wersja z dynamicznym wyborem modelu
+ * Poprawiona wersja z obsługą jQuery bez konfliktów
  */
-
-// Zapisz oryginalną instancję jQuery, aby uniknąć konfliktów
-var jQueryBC = jQuery.noConflict(true);
 
 (function($) {
     "use strict";
@@ -573,4 +570,4 @@ var jQueryBC = jQuery.noConflict(true);
         }
     });
     
-})(jQueryBC);
+})(jQuery); // Use the main jQuery instance instead of creating a new one
