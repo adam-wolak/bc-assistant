@@ -509,3 +509,93 @@ body a.dl-bubble div:not(:first-child) {
 .bc-assistant-call-button i {
     margin-right: 8px;
 }
+
+/* Super aggressive mobile fix specifically for Firefox */
+@-moz-document url-prefix() {
+    @media (max-width: 767px) {
+        html body .bc-assistant-container,
+        html body .bc-position-bottom-right {
+            position: fixed !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            z-index: 99999999 !important; /* Ultra high z-index */
+            bottom: 100px !important;
+            right: 20px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            pointer-events: auto !important;
+            clip: auto !important;
+            transform: none !important;
+            width: auto !important;
+            height: auto !important;
+            min-width: 50px !important;
+            min-height: 50px !important;
+        }
+        
+        html body .bc-assistant-bubble {
+            width: 50px !important;
+            height: 50px !important;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            border-radius: 50% !important;
+            background-color: #A67C52 !important;
+            z-index: 99999999 !important;
+            clip: auto !important;
+            transform: none !important;
+        }
+        
+        /* Force droplabs to show and be clean */
+        html body a.dl-bubble {
+            position: fixed !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            z-index: 9999998 !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            width: 50px !important;
+            height: 50px !important;
+            border-radius: 50% !important;
+            overflow: hidden !important;
+            background-color: #c69e91 !important;
+        }
+        
+        /* Hide ALL label text in droplabs bubble */
+        html body a.dl-bubble * {
+            display: none !important;
+        }
+        
+        /* Restore only the first child (main bubble element) */
+        html body a.dl-bubble > :first-child {
+            display: block !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+    }
+}
+
+/* Additional fix for very small screens and portrait orientation */
+@media (max-width: 480px) and (orientation: portrait) {
+    body {
+        overflow-x: hidden; /* Prevent horizontal scrolling */
+    }
+    
+    .bc-assistant-container,
+    .bc-assistant-bubble,
+    a.dl-bubble {
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    
+    /* Force visibility on scroll */
+    html.scrolling .bc-assistant-container,
+    html.scrolling .bc-assistant-bubble,
+    html.scrolling a.dl-bubble {
+        position: fixed !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+}

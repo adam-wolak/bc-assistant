@@ -572,6 +572,8 @@
 
 
 // Function to ensure BC Assistant visibility and handle Droplabs conflicts
+// Replace your current ensureBCAssistantVisibility function with this enhanced version
+
 function ensureBCAssistantVisibility() {
     // Wait for DOM to be fully loaded
     if (document.readyState === 'loading') {
@@ -581,54 +583,148 @@ function ensureBCAssistantVisibility() {
     }
 
     function initFixes() {
-        // Short delay to let other scripts initialize
+        // Apply fixes immediately and then again after short delays
+        applyFixes();
+        setTimeout(applyFixes, 500);
+        setTimeout(applyFixes, 1000);
+        setTimeout(applyFixes, 2000);
+        
+        // Also run fixes on page resize
+        window.addEventListener('resize', applyFixes);
+        
+        // Set interval to keep checking for 30 seconds
+        const checkInterval = setInterval(applyFixes, 1000);
         setTimeout(function() {
-            // Fix BC Assistant container
-            const bcContainer = document.querySelector('.bc-assistant-container');
-            if (bcContainer) {
-                bcContainer.style.zIndex = '999999';
-                bcContainer.style.display = 'block';
-                bcContainer.style.visibility = 'visible';
-                bcContainer.style.opacity = '1';
+            clearInterval(checkInterval);
+        }, 30000);
+    }
+    
+    function applyFixes() {
+        // Fix BC Assistant container
+        const bcContainer = document.querySelector('.bc-assistant-container');
+        if (bcContainer) {
+            const styles = {
+                'position': 'fixed',
+                'z-index': '9999999',
+                'display': 'block',
+                'visibility': 'visible',
+                'opacity': '1'
+            };
+            
+            Object.assign(bcContainer.style, styles);
+            
+            // Force bottom-right position on mobile
+            if (window.innerWidth <= 767) {
+                Object.assign(bcContainer.style, {
+                    'bottom': '100px',
+                    'right': '20px',
+                    'left': 'auto',
+                    'top': 'auto'
+                });
                 
-                // Force bottom-right position on mobile
-                if (window.innerWidth <= 767) {
-                    bcContainer.style.bottom = '100px';
-                    bcContainer.style.right = '20px';
-                    bcContainer.style.left = 'auto';
-                    bcContainer.style.top = 'auto';
+                // Firefox-specific fix
+                if (navigator.userAgent.indexOf('Firefox') !== -1) {
+                    Object.assign(bcContainer.style, {
+                        'min-width': '50px',
+                        'min-height': '50px',
+                        'box-sizing': 'border-box',
+                        'clip': 'auto',
+                        'pointer-events': 'auto',
+                        'transform': 'scale(1)'
+                    });
                 }
             }
-            
-            // Fix BC Assistant bubble
-            const bcBubble = document.querySelector('.bc-assistant-bubble');
-            if (bcBubble) {
-                bcBubble.style.zIndex = '999999';
-                bcBubble.style.display = 'flex';
-                bcBubble.style.visibility = 'visible';
-                bcBubble.style.opacity = '1';
+        } else {
+            // If container doesn't exist, try to recreate it (extreme case)
+            if (window.innerWidth <= 767 && typeof BCAssistant === 'function') {
+                try {
+                    window.bcAssistant = new BCAssistant(bcAssistantConfig);
+                } catch (e) {
+                    console.error('Could not recreate BC Assistant:', e);
+                }
             }
+        }
+        
+        // Fix BC Assistant bubble
+        const bcBubble = document.querySelector('.bc-assistant-bubble');
+        if (bcBubble) {
+            const bubbleStyles = {
+                'z-index': '9999999',
+                'display': 'flex',
+                'visibility': 'visible',
+                'opacity': '1',
+                'align-items': 'center',
+                'justify-content': 'center'
+            };
             
-            // Clean up Droplabs elements that might be causing problems
-            const dlBubble = document.querySelector('a.dl-bubble');
-            if (dlBubble) {
-                // Keep only the main bubble, hide additional text elements
-                const dlChildren = dlBubble.querySelectorAll('div:not(:first-child), span');
-                dlChildren.forEach(function(element) {
-                    element.style.display = 'none';
+            Object.assign(bcBubble.style, bubbleStyles);
+            
+            // Mobile specific styles
+            if (window.innerWidth <= 767) {
+                Object.assign(bcBubble.style, {
+                    'width': '50px',
+                    'height': '50px',
+                    'border-radius': '50%'
                 });
+                
+                // Firefox-specific fix
+                if (navigator.userAgent.indexOf('Firefox') !== -1) {
+                    Object.assign(bcBubble.style, {
+                        'pointer-events': 'auto',
+                        'transform': 'scale(1)',
+                        'clip-path': 'none'
+                    });
+                }
             }
-        }, 1000); // Delay execution by 1 second
+        }
+        
+        // Aggressively clean up Droplabs elements
+        const dlBubble = document.querySelector('a.dl-bubble');
+        if (dlBubble) {
+            dlBubble.style.zIndex = '999998';
+            dlBubble.style.display = 'block';
+            dlBubble.style.visibility = 'visible';
+            dlBubble.style.opacity = '1';
+            dlBubble.style.width = window.innerWidth <= 767 ? '50px' : '60px';
+            dlBubble.style.height = window.innerWidth <= 767 ? '50px' : '60px';
+            dlBubble.style.bottom = '20px';
+            dlBubble.style.right = '20px';
+            dlBubble.style.borderRadius = '50%';
+            
+            // Keep only the main bubble, hide ALL other elements
+            const dlChildren = dlBubble.querySelectorAll('*:not(:first-child)');
+            dlChildren.forEach(function(element) {
+                element.style.display = 'none';
+                element.style.visibility = 'hidden';
+                element.style.opacity = '0';
+                element.style.width = '0';
+                element.style.height = '0';
+                element.style.margin = '0';
+                element.style.padding = '0';
+                element.style.border = 'none';
+            });
+            
+            // Specifically target label
+            const labels = dlBubble.querySelectorAll('.dl-button-label, span, div[class*="styled"]');
+            labels.forEach(function(label) {
+                label.style.display = 'none';
+                label.style.visibility = 'hidden';
+            });
+        }
     }
 }
 
 // Run the function to ensure BC Assistant visibility
 ensureBCAssistantVisibility();
 
-// Suppress Amplitude errors
+// Enhanced Amplitude error suppression
 window.addEventListener('error', function(event) {
-    if (event && event.message && event.message.includes('Amplitude')) {
-        console.log('BC Assistant: Prevented Amplitude error');
+    // Check if the error is related to Amplitude
+    if (event && event.message && 
+        (event.message.includes('Amplitude') || 
+         event.message.toLowerCase().includes('amplitude') ||
+         (event.filename && event.filename.includes('bubble.js')))) {
+        console.log('BC Assistant: Prevented error:', event.message);
         event.preventDefault();
         return true;
     }

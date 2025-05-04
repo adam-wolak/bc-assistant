@@ -270,6 +270,7 @@ function bc_assistant_add_debug_tool() {
 add_action('admin_init', 'bc_assistant_add_debug_tool');
 
 // Wyświetl informacje diagnostyczne
+// Wyświetl informacje diagnostyczne
 function bc_assistant_debug_output() {
     // Testowy bezpośredni zapis modelu (pomiń standardowy formularz)
     if (isset($_POST['bc_debug_action']) && $_POST['bc_debug_action'] === 'test_save' && check_admin_referer('bc_debug_nonce')) {
@@ -501,26 +502,59 @@ function bc_assistant_debug_output() {
         foreach ($relevant_hooks as $hook) {
             if (isset($wp_filter[$hook])) {
                 echo '<li><strong>' . esc_html($hook) . ':</strong> ';
-                echo count($wp_filter[$hook]) . ' podpiętych funkcji</li>';
                 
-                // Pokaż szczegóły podpiętych funkcji
-                echo '<ul>';
-                foreach ($wp_filter[$hook] as $priority => $callbacks) {
-                    foreach ($callbacks as $name => $callback) {
-                        echo '<li>Priorytet ' . $priority . ': ';
-                        if (is_array($callback['function'])) {
-                            if (is_object($callback['function'][0])) {
-                                echo esc_html(get_class($callback['function'][0]) . '->' . $callback['function'][1]);
-                            } else {
-                                echo esc_html((is_string($callback['function'][0]) ? $callback['function'][0] : 'Array') . '::' . $callback['function'][1]);
-                            }
-                        } else {
-                            echo esc_html(is_string($callback['function']) ? $callback['function'] : 'Closure/Anonymous function');
-                        }
-                        echo '</li>';
+                // Fix the error - properly handle WP_Hook objects
+                if ($wp_filter[$hook] instanceof WP_Hook) {
+                    // Count total callbacks across all priorities
+                    $total_callbacks = 0;
+                    foreach ($wp_filter[$hook]->callbacks as $priority_callbacks) {
+                        $total_callbacks += count($priority_callbacks);
                     }
+                    echo $total_callbacks . ' podpiętych funkcji</li>';
+                    
+                    // Show callback details
+                    echo '<ul>';
+                    foreach ($wp_filter[$hook]->callbacks as $priority => $priority_callbacks) {
+                        foreach ($priority_callbacks as $name => $callback_data) {
+                            echo '<li>Priorytet ' . $priority . ': ';
+                            
+                            if (is_array($callback_data['function'])) {
+                                if (is_object($callback_data['function'][0])) {
+                                    echo esc_html(get_class($callback_data['function'][0]) . '->' . $callback_data['function'][1]);
+                                } else {
+                                    echo esc_html((is_string($callback_data['function'][0]) ? $callback_data['function'][0] : 'Array') . '::' . $callback_data['function'][1]);
+                                }
+                            } else {
+                                echo esc_html(is_string($callback_data['function']) ? $callback_data['function'] : 'Closure/Anonymous function');
+                            }
+                            echo '</li>';
+                        }
+                    }
+                    echo '</ul>';
+                } else {
+                    // For older WordPress versions or if $wp_filter[$hook] is an array
+                    echo count($wp_filter[$hook]) . ' podpiętych funkcji</li>';
+                    
+                    // Show callback details
+                    echo '<ul>';
+                    foreach ($wp_filter[$hook] as $priority => $callbacks) {
+                        foreach ($callbacks as $name => $callback) {
+                            echo '<li>Priorytet ' . $priority . ': ';
+                            
+                            if (is_array($callback['function'])) {
+                                if (is_object($callback['function'][0])) {
+                                    echo esc_html(get_class($callback['function'][0]) . '->' . $callback['function'][1]);
+                                } else {
+                                    echo esc_html((is_string($callback['function'][0]) ? $callback['function'][0] : 'Array') . '::' . $callback['function'][1]);
+                                }
+                            } else {
+                                echo esc_html(is_string($callback['function']) ? $callback['function'] : 'Closure/Anonymous function');
+                            }
+                            echo '</li>';
+                        }
+                    }
+                    echo '</ul>';
                 }
-                echo '</ul>';
             } else {
                 echo '<li><strong>' . esc_html($hook) . ':</strong> Brak podpiętych funkcji</li>';
             }
@@ -549,7 +583,7 @@ function bc_assistant_debug_output() {
         </p>
     </div>
     <?php
-}
+} // This is the missing closing brace that was causing the error
 
 // Dodaj link do narzędzia diagnostycznego w menu admina
 function bc_assistant_add_debug_link($wp_admin_bar) {
