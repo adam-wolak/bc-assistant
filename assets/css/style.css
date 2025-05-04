@@ -536,3 +536,59 @@ html.bc-assistant-open {
         display: none !important;
     }
 }
+
+/* Base positioning classes */
+.bc-assistant-wrapper.bc-position-bottom-right {
+    bottom: 20px;
+    right: 20px;
+    left: auto;
+    top: auto;
+}
+
+.bc-assistant-wrapper.bc-position-bottom-left {
+    bottom: 20px;
+    left: 20px;
+    right: auto;
+    top: auto;
+}
+
+.bc-assistant-wrapper.bc-position-top-right {
+    top: 20px;
+    right: 20px;
+    bottom: auto;
+    left: auto;
+}
+
+.bc-assistant-wrapper.bc-position-top-left {
+    top: 20px;
+    left: 20px;
+    bottom: auto;
+    right: auto;
+}
+
+/* Adjusted positions when conflicts are detected */
+.bc-assistant-wrapper.bc-adjust-position.bc-position-bottom-right,
+.bc-assistant-wrapper.bc-adjust-position.bc-position-bottom-left {
+    bottom: 120px !important; /* Move higher when conflicts exist */
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 767px) {
+    .bc-assistant-wrapper.bc-position-bottom-right,
+    .bc-assistant-wrapper.bc-position-bottom-left {
+        bottom: 100px !important; /* Higher position on mobile by default */
+        right: 20px !important;
+        left: auto !important;
+    }
+    
+    /* When conflicts exist, move even higher */
+    .bc-assistant-wrapper.bc-adjust-position.bc-position-bottom-right,
+    .bc-assistant-wrapper.bc-adjust-position.bc-position-bottom-left {
+        bottom: 170px !important;
+    }
+}
+
+/* Visual indicator for users - can be removed if not needed */
+.bc-assistant-wrapper.bc-adjust-position .bc-assistant-bubble {
+    border: 2px solid #fff; /* Subtle visual indicator that position was adjusted */
+}

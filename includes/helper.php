@@ -155,6 +155,57 @@ class BC_Assistant_Helper {
     }
     
     /**
+     * Add generic positioning script for UI elements
+     * This avoids conflicts with other floating UI elements without explicit dependencies
+     */
+    public static function add_ui_positioning() {
+        add_action('wp_footer', function() {
+            ?>
+            <script type="text/javascript">
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Get our wrapper element
+                    var bcWrapper = document.querySelector('.bc-assistant-wrapper');
+                    if (!bcWrapper) return;
+                    
+                    // Get position from data attribute
+                    var position = bcWrapper.getAttribute('data-position') || 'bottom-right';
+                    
+                    // Apply position with default priority
+                    bcWrapper.classList.add('bc-position-' + position);
+                    
+                    // Find any other floating elements in common areas
+                    var otherElements = document.querySelectorAll(
+                        // Generic selectors for common floating elements
+                        'a[class*="bubble"], div[class*="bubble"], div[class*="chat"], div[class*="widget"]'
+                    );
+                    
+                    // Check if any elements exist at similar positions
+                    var hasConflicts = Array.from(otherElements).some(function(el) {
+                        // Skip our own elements
+                        if (el.closest('.bc-assistant-wrapper')) return false;
+                        
+                        // Get element position
+                        var rect = el.getBoundingClientRect();
+                        var bottom = window.innerHeight - rect.bottom;
+                        var right = window.innerWidth - rect.right;
+                        
+                        // Check if position is in a similar area (bottom-right usually)
+                        return (bottom < 150 && right < 150);
+                    });
+                    
+                    // If conflicts detected, apply adjustment class
+                    if (hasConflicts) {
+                        bcWrapper.classList.add('bc-adjust-position');
+                        // Log for debugging
+                        console.log('BC Assistant: UI conflict detected, adjusting position');
+                    }
+                });
+            </script>
+            <?php
+        }, 999); // Very late priority to ensure it runs after other scripts
+    }
+    
+    /**
      * Log all available information for debugging
      * Useful for troubleshooting
      */
@@ -191,11 +242,6 @@ class BC_Assistant_Helper {
         // Log active plugins
         $active_plugins = get_option('active_plugins');
         self::log('Active Plugins', $active_plugins);
-        
-        // Check if Droplabs plugin is active
-        $droplabs_active = in_array('droplabs/droplabs.php', $active_plugins) || 
-                           in_array('droplabs-pro/droplabs-pro.php', $active_plugins);
-        self::log('Droplabs Active: ' . ($droplabs_active ? 'Yes' : 'No'));
     }
     
     /**
@@ -401,67 +447,6 @@ class BC_Assistant_Helper {
         $messages_exists = $wpdb->get_var("SHOW TABLES LIKE '$messages_table'") === $messages_table;
         
         return $conversations_exists && $messages_exists;
-    }
-}
-    
-    /**
-     * Check if Droplabs is active
-     * 
-     * @return boolean True if Droplabs is detected
-     */
-    public static function is_droplabs_active() {
-        // Check for Droplabs elements in footer
-        add_action('wp_footer', function() {
-            $droplabs_elements = array(
-                '.droplabs-container',
-                '.droplabs-widget',
-                '.droplabs-bubble',
-                '[id*="droplabs"]',
-                '.dl-container'
-            );
-            
-            echo '<script type="text/javascript">
-                document.addEventListener("DOMContentLoaded", function() {
-                    var hasDroplabs = false;
-                    
-                    // Check for Droplabs elements
-                    var selectors = ' . json_encode($droplabs_elements) . ';
-                    for (var i = 0; i < selectors.length; i++) {
-                        if (document.querySelector(selectors[i])) {
-                            hasDroplabs = true;
-                            break;
-                        }
-                    }
-                    
-                    // Set data attribute on BC Assistant wrapper
-                    var bcWrapper = document.querySelector(".bc-assistant-wrapper");
-                    if (bcWrapper && hasDroplabs) {
-                        bcWrapper.setAttribute("data-has-droplabs", "true");
-                        
-                        // Adjust position to avoid conflict
-                        if (bcWrapper.getAttribute("data-position").includes("bottom")) {
-                            bcWrapper.style.bottom = "150px";
-                        }
-                    }
-                });
-            </script>';
-        }, 99);
-        
-        return false; // Default return for server-side checks
-    }
-    
-    /**
-     * Get appropriate API endpoint based on model
-     * 
-     * @param string $model The model to use
-     * @return string The API endpoint URL
-     */
-    public static function get_api_endpoint($model) {
-        if (strpos($model, 'claude') !== false) {
-            return 'https://api.anthropic.com/v1/messages';
-        } else {
-            return 'https://api.openai.com/v1/chat/completions';
-        }
     }
     
     /**

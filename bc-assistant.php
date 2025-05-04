@@ -122,6 +122,9 @@ class BC_Assistant {
         
         // Register shortcode
         add_shortcode('bc_assistant', array($this, 'shortcode_handler'));
+		
+		// Add UI positioning script
+        BC_Assistant_Helper::add_ui_positioning();
     }
 
     /**
