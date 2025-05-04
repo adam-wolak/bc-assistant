@@ -201,7 +201,6 @@ $available_models = BC_Assistant_Config::get_available_models();
             </table>
         <?php elseif ($active_tab == 'display') : ?>
             <!-- Zakładka Wyświetlanie -->
-<!-- Add this section to your templates/admin.php file under the 'display' tab -->
 
 <?php if ($active_tab == 'display') : ?>
     <!-- Zakładka Wyświetlanie -->
@@ -274,18 +273,19 @@ $available_models = BC_Assistant_Config::get_available_models();
             </td>
         </tr>
     </table>
-        <?php elseif ($active_tab == 'debug') : ?>
-            <!-- Zakładka Diagnostyka -->
-            <p>
-			<a href="<?php echo admin_url('admin.php?page=bc-assistant-diagnostic'); ?>" class="button button-secondary">Otwórz narzędzie diagnostyczne</a>
-                <span class="description" style="margin-left: 10px;">Użyj narzędzia diagnostycznego, aby zbadać problemy z zapisywaniem modelu.</span>
-            </p>
-        <?php endif; ?>
-        
+<?php elseif ($active_tab == 'debug') : ?>
+    <!-- Zakładka Diagnostyka -->
+    <p>
+        <a href="<?php echo admin_url('admin.php?page=bc-assistant-diagnostic'); ?>" class="button button-secondary">Otwórz narzędzie diagnostyczne</a>
+        <span class="description" style="margin-left: 10px;">Użyj narzędzia diagnostycznego, aby zbadać problemy z zapisywaniem modelu.</span>
+    </p>
+<?php endif; ?>
+
         <input type="hidden" name="bc_assistant_save_settings" value="1" />
         <input type="hidden" name="bc_assistant_active_tab" value="<?php echo esc_attr($active_tab); ?>" />
         
         <?php submit_button('Zapisz ustawienia', 'primary', 'submit', true, ['id' => 'bc-assistant-save-button']); ?>
+		
     </form>
 </div>
 
