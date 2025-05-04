@@ -572,7 +572,6 @@
 
 
 // Function to ensure BC Assistant visibility and handle Droplabs conflicts
-// Replace your current ensureBCAssistantVisibility function with this enhanced version
 
 function ensureBCAssistantVisibility() {
     // Wait for DOM to be fully loaded
@@ -677,40 +676,6 @@ function ensureBCAssistantVisibility() {
                 }
             }
         }
-        
-        // Aggressively clean up Droplabs elements
-        const dlBubble = document.querySelector('a.dl-bubble');
-        if (dlBubble) {
-            dlBubble.style.zIndex = '999998';
-            dlBubble.style.display = 'block';
-            dlBubble.style.visibility = 'visible';
-            dlBubble.style.opacity = '1';
-            dlBubble.style.width = window.innerWidth <= 767 ? '50px' : '60px';
-            dlBubble.style.height = window.innerWidth <= 767 ? '50px' : '60px';
-            dlBubble.style.bottom = '20px';
-            dlBubble.style.right = '20px';
-            dlBubble.style.borderRadius = '50%';
-            
-            // Keep only the main bubble, hide ALL other elements
-            const dlChildren = dlBubble.querySelectorAll('*:not(:first-child)');
-            dlChildren.forEach(function(element) {
-                element.style.display = 'none';
-                element.style.visibility = 'hidden';
-                element.style.opacity = '0';
-                element.style.width = '0';
-                element.style.height = '0';
-                element.style.margin = '0';
-                element.style.padding = '0';
-                element.style.border = 'none';
-            });
-            
-            // Specifically target label
-            const labels = dlBubble.querySelectorAll('.dl-button-label, span, div[class*="styled"]');
-            labels.forEach(function(label) {
-                label.style.display = 'none';
-                label.style.visibility = 'hidden';
-            });
-        }
     }
 }
 
@@ -754,26 +719,6 @@ function fixScrollingIssues() {
             document.documentElement.classList.remove('has-bc-assistant-open');
         }
     });
-    
-    // Remove duplicate Droplabs elements
-    const removeDuplicates = function() {
-        // Hide duplicate icons
-        const duplicates = document.querySelectorAll('a.dl-bubble-tab-mobile');
-        duplicates.forEach(el => {
-            el.style.display = 'none';
-            el.style.visibility = 'hidden';
-        });
-        
-        // Clean up main bubble
-        const dlBubble = document.querySelector('a.dl-bubble');
-        if (dlBubble) {
-            const texts = dlBubble.querySelectorAll('span, div:not(:first-child)');
-            texts.forEach(el => {
-                el.style.display = 'none';
-                el.style.visibility = 'hidden';
-            });
-        }
-    };
     
     // Run cleanup periodically
     removeDuplicates();
@@ -820,26 +765,6 @@ $(document).ready(function() {
             isChatOpen = false;
         });
     }
-    
-    // Fix for Droplabs duplicate icons - specifically targeting dl-bubble-tab-mobile
-    const hideDuplicateDroplabsIcons = function() {
-        // Hide duplicate mobile tab
-        const dlMobileTabs = document.querySelectorAll('a.dl-bubble-tab-mobile');
-        if (dlMobileTabs.length > 0) {
-            for (let i = 0; i < dlMobileTabs.length; i++) {
-                dlMobileTabs[i].style.display = 'none';
-                dlMobileTabs[i].style.visibility = 'hidden';
-                dlMobileTabs[i].style.opacity = '0';
-                dlMobileTabs[i].style.pointerEvents = 'none';
-                dlMobileTabs[i].style.position = 'absolute';
-                dlMobileTabs[i].style.left = '-9999px';
-            }
-        }
-    };
-    
-    // Run on page load and periodically
-    hideDuplicateDroplabsIcons();
-    setInterval(hideDuplicateDroplabsIcons, 1000);
 });
 
 })(jQuery); // Use the main jQuery instance instead of creating a new one

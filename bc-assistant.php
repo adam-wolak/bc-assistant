@@ -28,46 +28,50 @@ require_once BC_ASSISTANT_PATH . 'includes/config.php';
 /**
  * Load environment variables from .env file (suppress warnings)
  */
+// Replace the existing bc_assistant_load_env function with this one
 function bc_assistant_load_env() {
     $dotenv = BC_ASSISTANT_PATH . '.env';
     
-    // Sprawdź czy plik istnieje i jest czytelny
+    // Check if file exists and is readable
     if (file_exists($dotenv) && is_readable($dotenv)) {
-        // Logowanie dla debugowania
+        // Log success for debugging
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('BC Assistant: .env file found at: ' . $dotenv);
+            error_log('BC Assistant: .env file found and readable at: ' . $dotenv);
         }
         
-        // Wczytaj zawartość pliku
-        $env_content = file_get_contents($dotenv);
+        // Read file line by line
+        $lines = file($dotenv, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            error_log('BC Assistant: Error reading .env file');
+            return;
+        }
         
-        // Przetwórz każdą linię
-        $lines = explode("\n", $env_content);
         foreach ($lines as $line) {
-            $line = trim($line);
-            
-            // Pomiń puste linie i komentarze
-            if (empty($line) || strpos($line, '#') === 0) {
+            // Skip comments and empty lines
+            if (empty($line) || strpos(trim($line), '#') === 0) {
                 continue;
             }
             
-            // Podziel na klucz i wartość
-            $pos = strpos($line, '=');
-            if ($pos !== false) {
-                $key = trim(substr($line, 0, $pos));
-                $value = trim(substr($line, $pos + 1));
+            // Parse key=value format
+            list($key, $value) = explode('=', $line, 2);
+            if (empty($key) || !isset($value)) {
+                continue;
+            }
+            
+            // Clean up key and value
+            $key = trim($key);
+            $value = trim($value);
+            
+            // Remove quotes if present
+            $value = trim($value, '"\'');
+            
+            // Set environment variable
+            if (!getenv($key) && !empty($key)) {
+                putenv("{$key}={$value}");
                 
-                // Usuń cudzysłowy
-                $value = trim($value, "'\"");
-                
-                // Ustaw zmienną środowiskową
-                if (!getenv($key)) {
-                    putenv("{$key}={$value}");
-                    
-                    // Logowanie dla debugowania
-                    if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log('BC Assistant: Set environment variable: ' . $key);
-                    }
+                // Log for debugging
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log("BC Assistant: Set environment variable: {$key}");
                 }
             }
         }

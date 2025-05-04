@@ -72,6 +72,7 @@
 
 /* Stylizacja okna asystenta */
 .bc-assistant-window {
+    display: none !important; /* Ensure it's always hidden by default */
     position: fixed !important;
     bottom: 170px !important; /* Move even higher to ensure no overlap */
     right: 20px !important;
@@ -85,6 +86,11 @@
     overflow: hidden;
     z-index: 999999 !important;
     box-sizing: border-box;
+}
+
+/* Add !important to your toggle function's display styles */
+.bc-assistant-window[style*="display: flex"] {
+    display: flex !important;
 }
 
 .bc-position-bottom-left .bc-assistant-window {
@@ -276,24 +282,6 @@
     color: #e6f0ff;
 }
 
-/* Specific overrides for Droplabs elements - DO NOT modify these */
-body a.dl-bubble,
-a.dl-bubble,
-.dl-bubble,
-#droplabs-widget-button,
-.droplabs-widget-button {
-    z-index: 999998 !important; /* High but below our assistant */
-    bottom: 20px !important;
-    right: 20px !important;
-}
-
-/* Hide any unwanted Droplabs elements that might be causing issues */
-.dl-bubble > div:not(:first-child),
-a.dl-bubble > div:not(:first-child),
-body a.dl-bubble span,
-body a.dl-bubble div:not(:first-child) {
-    display: none !important;
-}
 
 /* Responsywność dla urządzeń mobilnych */
 @media (max-width: 767px) {
@@ -345,17 +333,6 @@ body a.dl-bubble div:not(:first-child) {
         padding: 8px 12px;
     }
     
-    /* Clean up Droplabs display on mobile */
-    body a.dl-bubble,
-    a.dl-bubble,
-    .dl-bubble,
-    #droplabs-widget-button,
-    .droplabs-widget-button {
-        width: 50px !important;
-        height: 50px !important;
-        bottom: 20px !important;
-        right: 20px !important;
-    }
 }
 
 /* Dodatkowe usprawnienia dla bardzo małych ekranów */
@@ -546,34 +523,6 @@ body a.dl-bubble div:not(:first-child) {
             clip: auto !important;
             transform: none !important;
         }
-        
-        /* Force droplabs to show and be clean */
-        html body a.dl-bubble {
-            position: fixed !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            z-index: 9999998 !important;
-            bottom: 20px !important;
-            right: 20px !important;
-            width: 50px !important;
-            height: 50px !important;
-            border-radius: 50% !important;
-            overflow: hidden !important;
-            background-color: #c69e91 !important;
-        }
-        
-        /* Hide ALL label text in droplabs bubble */
-        html body a.dl-bubble * {
-            display: none !important;
-        }
-        
-        /* Restore only the first child (main bubble element) */
-        html body a.dl-bubble > :first-child {
-            display: block !important;
-            width: 100% !important;
-            height: 100% !important;
-        }
     }
 }
 
@@ -585,30 +534,10 @@ body a.dl-bubble div:not(:first-child) {
     
     .bc-assistant-container,
     .bc-assistant-bubble,
-    a.dl-bubble {
-        outline: none !important;
-        -webkit-tap-highlight-color: transparent !important;
-    }
     
     /* Force visibility on scroll */
     html.scrolling .bc-assistant-container,
     html.scrolling .bc-assistant-bubble,
-    html.scrolling a.dl-bubble {
-        position: fixed !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-    }
-}
-/* Hide duplicate Droplabs buttons */
-a.dl-bubble-tab-mobile {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    height: 0 !important;
-    width: 0 !important;
-    pointer-events: none !important;
-    position: absolute !important;
-    left: -9999px !important;
 }
 
 /* Fix scrolling issues on mobile */
@@ -619,16 +548,6 @@ html.has-bc-assistant-open {
     height: auto !important;
 }
 
-/* More aggressive hiding of Droplabs text */
-a.dl-bubble span,
-a.dl-bubble div:not(:first-child),
-.dl-tab--buy-online-mobile,
-.dl-bubble-tab__basket-mobile,
-#dl-bubble-text__tab-mobile {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-}
 
 /* Ensure BC Assistant is above everything */
 .bc-assistant-container,
@@ -643,19 +562,6 @@ a.dl-bubble div:not(:first-child),
         overflow-x: hidden !important;
         overflow-y: auto !important;
     }
-}
-/* Additional mobile fixes for duplicate Droplabs icons */
-a.dl-bubble-tab-mobile {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    height: 0 !important;
-    width: 0 !important;
-    position: absolute !important;
-    left: -9999px !important;
-    pointer-events: none !important;
-    clip: rect(0, 0, 0, 0) !important;
-    overflow: hidden !important;
 }
 
 /* Fix scrolling issues on mobile */
@@ -675,4 +581,16 @@ html.bc-assistant-open {
         height: auto !important;
         width: 100% !important;
     }
+}
+/* Ensure high z-index but ONLY for our elements */
+.bc-assistant-container,
+.bc-assistant-bubble,
+.bc-assistant-window,
+.bc-assistant-voice-container {
+    z-index: 999999 !important;
+}
+/* Position BC Assistant elements in a non-conflicting position */
+.bc-position-bottom-right {
+    bottom: 150px !important; /* Position much higher to avoid conflicts */
+    right: 20px !important;
 }
