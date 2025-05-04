@@ -599,3 +599,48 @@ body a.dl-bubble div:not(:first-child) {
         opacity: 1 !important;
     }
 }
+/* Hide duplicate Droplabs buttons */
+a.dl-bubble-tab-mobile {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    left: -9999px !important;
+}
+
+/* Fix scrolling issues on mobile */
+body.has-bc-assistant-open,
+html.has-bc-assistant-open {
+    overflow: auto !important;
+    position: relative !important;
+    height: auto !important;
+}
+
+/* More aggressive hiding of Droplabs text */
+a.dl-bubble span,
+a.dl-bubble div:not(:first-child),
+.dl-tab--buy-online-mobile,
+.dl-bubble-tab__basket-mobile,
+#dl-bubble-text__tab-mobile {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Ensure BC Assistant is above everything */
+.bc-assistant-container,
+.bc-assistant-bubble {
+    z-index: 9999999 !important;
+    bottom: 150px !important; /* Position higher to avoid overlap */
+}
+
+/* For very small screens, preserve scrolling */
+@media (max-width: 480px) {
+    body, html {
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+    }
+}

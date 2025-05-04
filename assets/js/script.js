@@ -731,4 +731,60 @@ window.addEventListener('error', function(event) {
     return false;
 }, true);
     
+// Fix scrolling issues when chat window is open
+function fixScrollingIssues() {
+    // Find elements
+    const chatWindow = document.querySelector('.bc-assistant-window');
+    const chatBubble = document.querySelector('.bc-assistant-bubble');
+    
+    if (!chatWindow || !chatBubble) return;
+    
+    // Track chat state
+    let isChatOpen = false;
+    
+    // Add scroll management
+    chatBubble.addEventListener('click', function() {
+        isChatOpen = !isChatOpen;
+        
+        if (isChatOpen) {
+            document.body.classList.add('has-bc-assistant-open');
+            document.documentElement.classList.add('has-bc-assistant-open');
+        } else {
+            document.body.classList.remove('has-bc-assistant-open');
+            document.documentElement.classList.remove('has-bc-assistant-open');
+        }
+    });
+    
+    // Remove duplicate Droplabs elements
+    const removeDuplicates = function() {
+        // Hide duplicate icons
+        const duplicates = document.querySelectorAll('a.dl-bubble-tab-mobile');
+        duplicates.forEach(el => {
+            el.style.display = 'none';
+            el.style.visibility = 'hidden';
+        });
+        
+        // Clean up main bubble
+        const dlBubble = document.querySelector('a.dl-bubble');
+        if (dlBubble) {
+            const texts = dlBubble.querySelectorAll('span, div:not(:first-child)');
+            texts.forEach(el => {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+            });
+        }
+    };
+    
+    // Run cleanup periodically
+    removeDuplicates();
+    setInterval(removeDuplicates, 1000);
+}
+
+// Initialize fixes
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fixScrollingIssues);
+} else {
+    fixScrollingIssues();
+}	
+	
 })(jQuery); // Use the main jQuery instance instead of creating a new one
