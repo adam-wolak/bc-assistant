@@ -698,42 +698,6 @@ window.addEventListener('error', function(event) {
     
 // Fix scrolling issues when chat window is open
 function fixScrollingIssues() {
-    // Find elements
-    const chatWindow = document.querySelector('.bc-assistant-window');
-    const chatBubble = document.querySelector('.bc-assistant-bubble');
-    
-    if (!chatWindow || !chatBubble) return;
-    
-    // Track chat state
-    let isChatOpen = false;
-    
-    // Add scroll management
-    chatBubble.addEventListener('click', function() {
-        isChatOpen = !isChatOpen;
-        
-        if (isChatOpen) {
-            document.body.classList.add('has-bc-assistant-open');
-            document.documentElement.classList.add('has-bc-assistant-open');
-        } else {
-            document.body.classList.remove('has-bc-assistant-open');
-            document.documentElement.classList.remove('has-bc-assistant-open');
-        }
-    });
-    
-    // Run cleanup periodically
-    removeDuplicates();
-    setInterval(removeDuplicates, 1000);
-}
-
-// Initialize fixes
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fixScrollingIssues);
-} else {
-    fixScrollingIssues();
-}	
-
-// Add scroll management functions
-$(document).ready(function() {
     // Find the chat window and bubble
     const chatWindow = document.querySelector('.bc-assistant-window');
     const chatBubble = document.querySelector('.bc-assistant-bubble');
@@ -765,6 +729,112 @@ $(document).ready(function() {
             isChatOpen = false;
         });
     }
-});
+}
 
-})(jQuery); // Use the main jQuery instance instead of creating a new one
+// Run the function after DOM is loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fixScrollingIssues);
+} else {
+    fixScrollingIssues();
+}
+
+// Single, consolidated fix for BC Assistant visibility and scrolling
+$(document).ready(function() {
+    // Fix visibility and ensure proper display
+    function fixBCAssistantDisplay() {
+        // Fix BC Assistant container
+        const bcContainer = document.querySelector('.bc-assistant-container');
+        if (bcContainer) {
+            bcContainer.style.position = 'fixed';
+            bcContainer.style.zIndex = '9999999';
+            bcContainer.style.display = 'block';
+            bcContainer.style.visibility = 'visible';
+            bcContainer.style.opacity = '1';
+            
+            // Mobile positioning
+            if (window.innerWidth <= 767) {
+                bcContainer.style.bottom = '100px';
+                bcContainer.style.right = '20px';
+                bcContainer.style.left = 'auto';
+                bcContainer.style.top = 'auto';
+            }
+        }
+        
+        // Fix BC Assistant bubble
+        const bcBubble = document.querySelector('.bc-assistant-bubble');
+        if (bcBubble) {
+            bcBubble.style.zIndex = '9999999';
+            bcBubble.style.display = 'flex';
+            bcBubble.style.visibility = 'visible';
+            bcBubble.style.opacity = '1';
+            bcBubble.style.alignItems = 'center';
+            bcBubble.style.justifyContent = 'center';
+        }
+        
+        // Fix window display
+        const bcWindow = document.querySelector('.bc-assistant-window');
+        if (bcWindow) {
+            bcWindow.style.zIndex = '9999999';
+            
+            // Ensure it's hidden by default unless explicitly toggled
+            if (bcWindow.style.display !== 'flex') {
+                bcWindow.style.display = 'none';
+            }
+        }
+    }
+    
+    // Fix scrolling when chat is open
+    function setupScrollClassHandlers() {
+        const chatWindow = document.querySelector('.bc-assistant-window');
+        const chatBubble = document.querySelector('.bc-assistant-bubble');
+        
+        if (!chatWindow || !chatBubble) return;
+        
+        // Remove any existing event listeners (to prevent duplicates)
+        const bubbleClone = chatBubble.cloneNode(true);
+        chatBubble.parentNode.replaceChild(bubbleClone, chatBubble);
+        
+        // Add fresh event listener
+        bubbleClone.addEventListener('click', function() {
+            if (chatWindow.style.display === 'flex') {
+                document.body.classList.remove('bc-assistant-open');
+                document.documentElement.classList.remove('bc-assistant-open');
+            } else {
+                document.body.classList.add('bc-assistant-open');
+                document.documentElement.classList.add('bc-assistant-open');
+            }
+        });
+        
+        // Handle close button
+        const closeButton = chatWindow.querySelector('.bc-assistant-close');
+        if (closeButton) {
+            const closeBtnClone = closeButton.cloneNode(true);
+            closeButton.parentNode.replaceChild(closeBtnClone, closeButton);
+            
+            closeBtnClone.addEventListener('click', function() {
+                document.body.classList.remove('bc-assistant-open');
+                document.documentElement.classList.remove('bc-assistant-open');
+            });
+        }
+    }
+    
+    // Run both fixes
+    fixBCAssistantDisplay();
+    setupScrollClassHandlers();
+    
+    // Also run on resize and periodically
+    window.addEventListener('resize', fixBCAssistantDisplay);
+    setInterval(fixBCAssistantDisplay, 2000);
+    
+    // Error handling for external scripts
+    window.addEventListener('error', function(event) {
+        if (event && event.message && 
+            (event.message.includes('Amplitude') || 
+            event.filename && event.filename.includes('bubble.js'))) {
+            console.log('BC Assistant: Prevented external error');
+            event.preventDefault();
+            return true;
+        }
+        return false;
+    }, true);
+});
