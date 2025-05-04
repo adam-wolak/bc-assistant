@@ -569,5 +569,70 @@
             console.error("BC Assistant initialization error:", error);
         }
     });
+
+
+// Function to ensure BC Assistant visibility and handle Droplabs conflicts
+function ensureBCAssistantVisibility() {
+    // Wait for DOM to be fully loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFixes);
+    } else {
+        initFixes();
+    }
+
+    function initFixes() {
+        // Short delay to let other scripts initialize
+        setTimeout(function() {
+            // Fix BC Assistant container
+            const bcContainer = document.querySelector('.bc-assistant-container');
+            if (bcContainer) {
+                bcContainer.style.zIndex = '999999';
+                bcContainer.style.display = 'block';
+                bcContainer.style.visibility = 'visible';
+                bcContainer.style.opacity = '1';
+                
+                // Force bottom-right position on mobile
+                if (window.innerWidth <= 767) {
+                    bcContainer.style.bottom = '100px';
+                    bcContainer.style.right = '20px';
+                    bcContainer.style.left = 'auto';
+                    bcContainer.style.top = 'auto';
+                }
+            }
+            
+            // Fix BC Assistant bubble
+            const bcBubble = document.querySelector('.bc-assistant-bubble');
+            if (bcBubble) {
+                bcBubble.style.zIndex = '999999';
+                bcBubble.style.display = 'flex';
+                bcBubble.style.visibility = 'visible';
+                bcBubble.style.opacity = '1';
+            }
+            
+            // Clean up Droplabs elements that might be causing problems
+            const dlBubble = document.querySelector('a.dl-bubble');
+            if (dlBubble) {
+                // Keep only the main bubble, hide additional text elements
+                const dlChildren = dlBubble.querySelectorAll('div:not(:first-child), span');
+                dlChildren.forEach(function(element) {
+                    element.style.display = 'none';
+                });
+            }
+        }, 1000); // Delay execution by 1 second
+    }
+}
+
+// Run the function to ensure BC Assistant visibility
+ensureBCAssistantVisibility();
+
+// Suppress Amplitude errors
+window.addEventListener('error', function(event) {
+    if (event && event.message && event.message.includes('Amplitude')) {
+        console.log('BC Assistant: Prevented Amplitude error');
+        event.preventDefault();
+        return true;
+    }
+    return false;
+}, true);
     
 })(jQuery); // Use the main jQuery instance instead of creating a new one
