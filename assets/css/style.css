@@ -4,9 +4,10 @@
  */
 
 /* Kontenery i pozycjonowanie */
+/* Base styling for BC Assistant container */
 .bc-assistant-container {
     position: fixed;
-    z-index: 9999;
+    z-index: 99998; /* Just below Droplabs z-index */
     box-sizing: border-box;
 }
 
@@ -14,6 +15,16 @@
 .bc-position-bottom-right {
     right: 20px;
     bottom: 20px;
+}
+
+    /* Adjust droplabs positioning if needed */
+#droplabs-widget-button {
+    z-index: 9996 !important; /* Ensure visibility but below BC Assistant */
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    bottom: 20px !important;
+    right: 20px !important;
 }
 
 .bc-position-bottom-left {
@@ -36,14 +47,14 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background-color: #A67C52; /* Zmień na kolor Bielsko Clinic */
+    background-color: #A67C52;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
-    z-index: 9997; /* Zwiększ z-index, aby był wyższy niż Droplabs */
+    z-index: 99998;
 }
 
 .bc-assistant-bubble:hover {
@@ -273,15 +284,31 @@
 
 /* Responsywność dla urządzeń mobilnych */
 @media (max-width: 768px) {
+    .bc-assistant-container {
+        /* Ensure visibility on mobile */
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        
+        /* Adjust positioning to avoid overlaps */
+        bottom: 20px;
+        right: 20px;
+    }
     .bc-assistant-window {
         width: 85%;
         height: 70vh;
-        bottom: 80px;
+        bottom: 160px; /* Position above both bubbles */
         right: 10px;
-    }
+        z-index: 99998;
+    }	
     
     .bc-position-bottom-left .bc-assistant-window {
         left: 10px;
+    }
+	
+    .bc-position-bottom-right {
+        right: 20px;
+        bottom: 90px; /* Move higher to avoid overlap with Droplabs */
     }
     
     .bc-message {
@@ -289,8 +316,25 @@
     }
     
     .bc-assistant-bubble {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         width: 50px;
         height: 50px;
+    }
+    
+    /* Make sure Droplabs bubble is visible on mobile */
+    body a.dl-bubble {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        z-index: 99999 !important;
+        right: 20px !important;
+        bottom: 20px !important;
+        width: 60px !important; 
+        height: 60px !important;
+        border-radius: 50% !important;
     }
     
     .bc-default-avatar, .bc-avatar {
@@ -315,48 +359,40 @@
         height: 60vh;
         right: 5%;
         left: 5%;
+        bottom: 160px; /* Keep it above both buttons */
     }
     
-    .bc-position-bottom-left .bc-assistant-window,
-    .bc-position-bottom-right .bc-assistant-window {
-        bottom: 80px;
+    /* Ensure both buttons are visible and don't overlap */
+    .bc-position-bottom-right {
+        bottom: 90px !important;
+        right: 20px !important;
     }
     
-    .bc-position-top-left .bc-assistant-window,
-    .bc-position-top-right .bc-assistant-window {
-        top: 80px;
-    }
-
-    .bc-assistant-input-container {
-        padding: 8px;
-    }
-    
-    .bc-assistant-send {
-        padding: 0 10px;
+    body a.dl-bubble {
+        bottom: 20px !important;
+        right: 20px !important;
+        width: 50px !important; 
+        height: 50px !important;
     }
 }
 /* Style dla trybu głosowego */
-.bc-assistant-voice-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
-}
-
-.bc-assistant-voice-button {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background-color: #4A90E2;
-    color: white;
-    border: none;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
+    .bc-assistant-voice-container {
+        position: fixed !important;
+        bottom: 90px !important;
+        right: 20px !important;
+        z-index: 99998 !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    .bc-assistant-voice-button {
+        width: 50px;
+        height: 50px;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
 
 .bc-assistant-voice-button:hover {
     transform: scale(1.1);
