@@ -249,13 +249,19 @@
         
         // Format message content (simple markdown-like parsing)
         formatMessage(text) {
-            return text
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/`([^`]+)`/g, '<code>$1</code>')
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-        }
+
+		// Check if text is undefined or null
+		if (!text) {
+        return ''; // Return empty string if text is undefined
+		}
+    
+		return text
+          .replace(/\n/g, '<br>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+		}
         
         // Format timestamp
         formatTime(date) {
@@ -545,3 +551,27 @@
     }
     
 })(jQuery);
+
+// Ensure welcome message is properly initialized
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        // Debug log for welcome message
+        console.log('BC Assistant: Checking welcome message initialization');
+        
+        // Check if global welcome message is available
+        if (typeof window.bcAssistantWelcomeMessage === 'undefined' || !window.bcAssistantWelcomeMessage) {
+            console.warn('BC Assistant: Welcome message not found in global scope, setting default');
+            window.bcAssistantWelcomeMessage = 'Witaj! W czym mogę pomóc?';
+        }
+        
+        // Check if bcAssistantData has welcomeMessage
+        if (typeof window.bcAssistantData === 'undefined' || !window.bcAssistantData.welcomeMessage) {
+            console.warn('BC Assistant: welcomeMessage not found in bcAssistantData, using global welcome message');
+            if (window.bcAssistantData) {
+                window.bcAssistantData.welcomeMessage = window.bcAssistantWelcomeMessage;
+            }
+        }
+        
+        console.log('BC Assistant: Welcome message setup complete');
+    });
+})();

@@ -37,6 +37,9 @@ require_once BC_ASSISTANT_PATH . 'includes/activation.php';
 // Load database migrations
 require_once BC_ASSISTANT_PATH . 'includes/migrations.php';
 
+// Load diagnostic tool
+require_once BC_ASSISTANT_PATH . 'includes/diagnostic.php';
+
 /**
  * Load environment variables from .env file (suppress warnings)
  */
@@ -104,28 +107,28 @@ add_action('init', 'bc_assistant_load_env');
 class BC_Assistant {
     private $plugin_url;
     
-    public function __construct() {
-        $this->plugin_url = BC_ASSISTANT_URL;
-        
-        // Register settings group
-        add_action('admin_init', array($this, 'register_settings'));
-        
-        // Add admin menu
-        add_action('admin_menu', array($this, 'register_admin_page'));
-        
-        // Enqueue assets
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));
-        add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
-        
-        // Render chat bubble
-        add_action('wp_footer', array($this, 'render_chat'));
-        
-        // Register shortcode
-        add_shortcode('bc_assistant', array($this, 'shortcode_handler'));
-		
-		// Add UI positioning script
-        BC_Assistant_Helper::add_ui_positioning();
-    }
+public function __construct() {
+    $this->plugin_url = BC_ASSISTANT_URL;
+    
+    // Register settings group
+    add_action('admin_init', array($this, 'register_settings'));
+    
+    // Add admin menu
+    add_action('admin_menu', array($this, 'register_admin_page'));
+    
+    // Enqueue assets
+    add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));
+    add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+    
+    // Render chat bubble
+    add_action('wp_footer', array($this, 'render_chat'));
+    
+    // Register shortcode
+    add_shortcode('bc_assistant', array($this, 'shortcode_handler'));
+    
+    // Add UI positioning script
+    BC_Assistant_Helper::add_ui_positioning();
+}
 
     /**
      * Register plugin settings
@@ -297,18 +300,35 @@ class BC_Assistant {
     /**
      * Render chat bubble in footer
      */
-    public function render_chat() {
-        // Get configuration
-        $config = BC_Assistant_Config::get_all();
-        
-        // Skip if display mode is not bubble
-        if ($config['display_mode'] !== 'bubble') {
-            return;
-        }
-        
-        // Include the new unified template
-        include BC_ASSISTANT_PATH . 'templates/assistant-wrapper.php';
+public function render_chat() {
+    // Get configuration
+    $config = BC_Assistant_Config::get_all();
+    
+    // Skip if display mode is not bubble
+    if ($config['display_mode'] !== 'bubble') {
+        return;
     }
+    
+    // Make sure all required config variables are set with defaults
+    if (!isset($config['theme'])) {
+        $config['theme'] = 'light';
+    }
+    
+    if (!isset($config['bubble_position'])) {
+        $config['bubble_position'] = 'bottom-right';
+    }
+    
+    if (!isset($config['bubble_icon'])) {
+        $config['bubble_icon'] = 'chat';
+    }
+    
+    if (!isset($config['button_text'])) {
+        $config['button_text'] = 'Zapytaj asystenta';
+    }
+    
+    // Include the template
+    include BC_ASSISTANT_PATH . 'templates/assistant-wrapper.php';
+}
     
     /**
      * Handle shortcode

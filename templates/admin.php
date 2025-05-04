@@ -201,45 +201,83 @@ $available_models = BC_Assistant_Config::get_available_models();
             </table>
         <?php elseif ($active_tab == 'display') : ?>
             <!-- Zakładka Wyświetlanie -->
-            <table class="form-table">
-                <tr valign="top">
-                    <th scope="row">Wiadomość powitalna</th>
-                    <td>
-                        <input type="text" name="bc_assistant_welcome_message_default" 
-                               value="<?php echo esc_attr(BC_Assistant_Config::get('welcome_message_default')); ?>" 
-                               class="large-text" />
-                        <p class="description">Wiadomość powitalna wyświetlana użytkownikowi po otwarciu czatu.</p>
-                    </td>
-                </tr>
-                <tr valign="top">
-                    <th scope="row">Tryb wyświetlania</th>
-                    <td>
-                        <select name="bc_assistant_display_mode">
-                            <option value="bubble" <?php selected(BC_Assistant_Config::get('display_mode'), 'bubble'); ?>>Bąbelek (floating bubble)</option>
-                            <option value="embedded" <?php selected(BC_Assistant_Config::get('display_mode'), 'embedded'); ?>>Osadzony (embedded)</option>
-                            <option value="voice" <?php selected(BC_Assistant_Config::get('display_mode'), 'voice'); ?>>Tylko głosowy (mobile)</option>
-                        </select>
-                        <p class="description">Wybierz sposób wyświetlania asystenta na stronie.</p>
-                    </td>
-                </tr>
-                <tr valign="top">
-                    <th scope="row">Ikona bąbelka</th>
-                    <td>
-                        <select name="bc_assistant_bubble_icon">
-                            <option value="chat" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'chat'); ?>>Dymek czatu</option>
-                            <option value="question" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'question'); ?>>Znak zapytania</option>
-                            <option value="info" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'info'); ?>>Informacja</option>
-                            <option value="robot" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'robot'); ?>>Robot</option>
-                            <option value="user" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'user'); ?>>Lekarz</option>
-                        </select>
-                        <p class="description">Wybierz ikonę dla bąbelka czatu.</p>
-                    </td>
-                </tr>
-            </table>
+<!-- Add this section to your templates/admin.php file under the 'display' tab -->
+
+<?php if ($active_tab == 'display') : ?>
+    <!-- Zakładka Wyświetlanie -->
+    <table class="form-table">
+        <tr valign="top">
+            <th scope="row">Wiadomość powitalna</th>
+            <td>
+                <input type="text" name="bc_assistant_welcome_message_default" 
+                       value="<?php echo esc_attr(BC_Assistant_Config::get('welcome_message_default')); ?>" 
+                       class="large-text" />
+                <p class="description">Wiadomość powitalna wyświetlana użytkownikowi po otwarciu czatu.</p>
+            </td>
+        </tr>
+        <tr valign="top">
+            <th scope="row">Tryb wyświetlania</th>
+            <td>
+                <select name="bc_assistant_display_mode">
+                    <option value="bubble" <?php selected(BC_Assistant_Config::get('display_mode'), 'bubble'); ?>>Bąbelek (floating bubble)</option>
+                    <option value="embedded" <?php selected(BC_Assistant_Config::get('display_mode'), 'embedded'); ?>>Osadzony (embedded)</option>
+                    <option value="voice" <?php selected(BC_Assistant_Config::get('display_mode'), 'voice'); ?>>Tylko głosowy (mobile)</option>
+                </select>
+                <p class="description">Wybierz sposób wyświetlania asystenta na stronie.</p>
+            </td>
+        </tr>
+        <tr valign="top">
+            <th scope="row">Ikona bąbelka</th>
+            <td>
+                <select name="bc_assistant_bubble_icon">
+                    <option value="chat" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'chat'); ?>>Dymek czatu</option>
+                    <option value="question" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'question'); ?>>Znak zapytania</option>
+                    <option value="info" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'info'); ?>>Informacja</option>
+                    <option value="robot" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'robot'); ?>>Robot</option>
+                    <option value="user" <?php selected(BC_Assistant_Config::get('bubble_icon'), 'user'); ?>>Lekarz</option>
+                </select>
+                <p class="description">Wybierz ikonę dla bąbelka czatu.</p>
+            </td>
+        </tr>
+        <!-- Add new position setting -->
+        <tr valign="top">
+            <th scope="row">Pozycja bąbelka</th>
+            <td>
+                <select name="bc_assistant_bubble_position">
+                    <option value="bottom-right" <?php selected(BC_Assistant_Config::get('bubble_position'), 'bottom-right'); ?>>Prawy dolny róg</option>
+                    <option value="bottom-left" <?php selected(BC_Assistant_Config::get('bubble_position'), 'bottom-left'); ?>>Lewy dolny róg</option>
+                    <option value="top-right" <?php selected(BC_Assistant_Config::get('bubble_position'), 'top-right'); ?>>Prawy górny róg</option>
+                    <option value="top-left" <?php selected(BC_Assistant_Config::get('bubble_position'), 'top-left'); ?>>Lewy górny róg</option>
+                </select>
+                <p class="description">Wybierz pozycję bąbelka czatu na stronie.</p>
+            </td>
+        </tr>
+        <tr valign="top">
+            <th scope="row">Automatyczna zmiana pozycji</th>
+            <td>
+                <label>
+                    <input type="checkbox" name="bc_assistant_auto_position" value="1" 
+                           <?php checked(BC_Assistant_Config::get('auto_position'), 1); ?> />
+                    Automatycznie dostosuj pozycję, gdy wykryto konflikty z innymi elementami
+                </label>
+                <p class="description">Gdy włączone, asystent będzie zmieniał pozycję, aby uniknąć nakładania się z innymi pływającymi elementami (np. innych czatów).</p>
+            </td>
+        </tr>
+        <tr valign="top">
+            <th scope="row">Motyw</th>
+            <td>
+                <select name="bc_assistant_theme">
+                    <option value="light" <?php selected(BC_Assistant_Config::get('theme'), 'light'); ?>>Jasny</option>
+                    <option value="dark" <?php selected(BC_Assistant_Config::get('theme'), 'dark'); ?>>Ciemny</option>
+                </select>
+                <p class="description">Wybierz motyw kolorystyczny dla asystenta.</p>
+            </td>
+        </tr>
+    </table>
         <?php elseif ($active_tab == 'debug') : ?>
             <!-- Zakładka Diagnostyka -->
             <p>
-                <a href="<?php echo admin_url('?bc_debug=model'); ?>" class="button button-secondary">Otwórz narzędzie diagnostyczne</a>
+			<a href="<?php echo admin_url('admin.php?page=bc-assistant-diagnostic'); ?>" class="button button-secondary">Otwórz narzędzie diagnostyczne</a>
                 <span class="description" style="margin-left: 10px;">Użyj narzędzia diagnostycznego, aby zbadać problemy z zapisywaniem modelu.</span>
             </p>
         <?php endif; ?>

@@ -9,13 +9,14 @@ if (!defined('ABSPATH')) {
 }
 
 // Get configuration
-$theme_class = 'bc-assistant-' . esc_attr($theme);
+$theme = isset($config['theme']) ? esc_attr($config['theme']) : 'light';
+$theme_class = 'bc-assistant-' . $theme;
 $unique_id = 'bc-assistant-' . uniqid();
 $position = isset($config['bubble_position']) ? esc_attr($config['bubble_position']) : 'bottom-right';
 
 // Get icon class based on settings
 $icon_class = '';
-switch (BC_Assistant_Config::get('bubble_icon')) {
+switch (isset($config['bubble_icon']) ? $config['bubble_icon'] : 'chat') {
     case 'question':
         $icon_class = 'fas fa-question-circle';
         break;
@@ -40,7 +41,7 @@ $page_context = BC_Assistant_Helper::get_page_context();
 $welcome_message = BC_Assistant_Helper::get_welcome_message($page_context);
 
 // Get button text
-$button_text = esc_html(BC_Assistant_Config::get('button_text') ?: 'Zapytaj asystenta');
+$button_text = isset($config['button_text']) ? esc_html($config['button_text']) : 'Zapytaj asystenta';
 ?>
 
 <!-- BC Assistant Wrapper -->
