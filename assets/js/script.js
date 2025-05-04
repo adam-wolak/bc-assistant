@@ -1,311 +1,374 @@
 /**
- * BC Assistant - skrypt główny
- * Poprawiona wersja z obsługą jQuery bez konfliktów
+ * BC Assistant - Fixed Mobile Implementation
+ * This script resolves conflicts with Droplabs and ensures reliable mobile display
  */
 
 (function($) {
     "use strict";
     
-    // Globalne dane konfiguracyjne BC Assistant
-    const bcAssistantData = window.bcAssistantData || { 
+    // Configuration object - will be populated from WordPress data
+    const bcConfig = window.bcAssistantData || {
         model: "gpt-4o",
         apiEndpoint: "/wp-admin/admin-ajax.php",
-        action: "bc_assistant_send_message"
+        action: "bc_assistant_send_message",
+        position: "bottom-right",
+        title: "Asystent BC",
+        initialMessage: "Witaj! W czym mogę pomóc?",
+        nonce: ""
     };
-
-    // Konfiguracja asystenta
-    const bcAssistantConfig = {
-        // Użyj dynamicznego modelu z ustawień WordPress zamiast stałej wartości
-        model: bcAssistantData.model,
-        
-        // Pozostałe parametry
-        position: bcAssistantData.position || "bottom-right",
-        avatar: bcAssistantData.avatar || "",
-        title: bcAssistantData.title || "BC Assistant",
-        initialMessage: bcAssistantData.initialMessage || "Witaj! W czym mogę pomóc?",
-        displayMode: bcAssistantData.display_mode || "bubble", // Nowy parametr
-        
-        // Opcje debugowania
-        debug: bcAssistantData.debug || false
-    };
-
-    // Klasa główna
+    
+    // Main BC Assistant class
     class BCAssistant {
         constructor(config) {
+            // Store configuration
             this.config = config;
             this.messages = [];
             this.isOpen = false;
             this.isTyping = false;
-            this.isMobileDevice = this.checkIfMobile();
+            this.threadId = localStorage.getItem('bc_assistant_thread_id') || '';
+            this.isMobile = this.checkIfMobile();
             
-            // Zapisz model w logach dla debugowania
-            if (this.config.debug) {
-                console.log("BC Assistant initialized with model:", this.config.model);
-                console.log("Is mobile device:", this.isMobileDevice);
-                console.log("Display mode:", this.config.displayMode);
-            }
-            
+            // Initialize the assistant
             this.init();
-        }
-        
-        checkIfMobile() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        }
-        
-        init() {
-            // Na urządzeniach mobilnych użyj trybu głosowego, jeśli został wybrany
-            if (this.isMobileDevice && this.config.displayMode === 'voice') {
-                this.initVoiceAssistant();
-            } else {
-                // Standardowa inicjalizacja czatu
-                this.createElements();
-                this.setupEventListeners();
-                this.setupDraggable();
-                this.addMessage('assistant', this.config.initialMessage);
-            }
             
-            // Zaloguj inicjalizację
-            if (this.config.debug) {
-                console.log("BC Assistant initialized");
+            // Log initialization for debugging
+            if (config.debug) {
+                console.log("BC Assistant initialized with model:", this.config.model);
+                console.log("Device type:", this.isMobile ? "Mobile" : "Desktop");
             }
         }
         
-        createElements() {
-            // Tworzenie głównego kontenera
+        // Check if current device is mobile
+        checkIfMobile() {
+            return window.innerWidth < 768 || 
+                   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+        
+        // Initialize the assistant
+        init() {
+            // Create the DOM elements
+            this.createDOM();
+            
+            // Add event listeners
+            this.setupEvents();
+            
+            // Add initial welcome message
+            this.addMessage('assistant', this.config.initialMessage);
+            
+            // Apply fixes for potential conflicts
+            this.applyFixes();
+            
+            // Set up periodic visibility check
+            setInterval(() => this.ensureVisibility(), 2000);
+        }
+        
+        // Create all DOM elements
+        createDOM() {
+            // Create wrapper (highest level container)
+            this.wrapper = document.createElement('div');
+            this.wrapper.className = 'bc-assistant-wrapper';
+            this.wrapper.setAttribute('data-position', this.config.position);
+            
+            // Create main container
             this.container = document.createElement('div');
             this.container.className = 'bc-assistant-container';
             
-            // Ustawienie pozycji na podstawie konfiguracji
-            this.container.classList.add(`bc-position-${this.config.position}`);
-            
-            // Utwórz przycisk bąbelkowy
+            // Create chat bubble
             this.bubble = document.createElement('div');
             this.bubble.className = 'bc-assistant-bubble';
+            this.bubble.innerHTML = '<i class="fas fa-comments"></i>';
             
-            // Utwórz avatar (jeśli podano)
-            if (this.config.avatar) {
-                const avatarImg = document.createElement('img');
-                avatarImg.src = this.config.avatar;
-                avatarImg.alt = 'Assistant Avatar';
-                avatarImg.className = 'bc-avatar';
-                this.bubble.appendChild(avatarImg);
-            } else {
-                // Domyślna ikona
-                this.bubble.innerHTML = '<div class="bc-default-avatar"></div>';
-            }
-            
-            // Utwórz okno asystenta
+            // Create chat window
             this.window = document.createElement('div');
             this.window.className = 'bc-assistant-window';
-            this.window.style.display = 'none';
             
-            // Nagłówek
+            // Create window header
             const header = document.createElement('div');
             header.className = 'bc-assistant-header';
+            header.innerHTML = `
+                <div class="bc-assistant-title">${this.config.title}</div>
+                <div class="bc-assistant-controls">
+                    <button class="bc-assistant-minimize" title="Zminimalizuj">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button class="bc-assistant-close" title="Zamknij">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
             
-            const title = document.createElement('div');
-            title.className = 'bc-assistant-title';
-            title.textContent = this.config.title;
-            
-            const closeBtn = document.createElement('button');
-            closeBtn.className = 'bc-assistant-close';
-            closeBtn.innerHTML = '&times;';
-            closeBtn.onclick = () => this.toggleWindow();
-            
-            header.appendChild(title);
-            header.appendChild(closeBtn);
-            
-            // Kontener wiadomości
+            // Create messages container
             this.messagesContainer = document.createElement('div');
             this.messagesContainer.className = 'bc-assistant-messages';
             
-            // Pole wiadomości
+            // Create input container
             const inputContainer = document.createElement('div');
             inputContainer.className = 'bc-assistant-input-container';
+            inputContainer.innerHTML = `
+                <textarea class="bc-assistant-input" placeholder="Wpisz swoje pytanie..."></textarea>
+                <button class="bc-assistant-send" title="Wyślij">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            `;
             
-            this.inputField = document.createElement('textarea');
-            this.inputField.className = 'bc-assistant-input';
-            this.inputField.placeholder = 'Wpisz wiadomość...';
-            
-            const sendButton = document.createElement('button');
-            sendButton.className = 'bc-assistant-send';
-            sendButton.textContent = 'Wyślij';
-            sendButton.onclick = () => this.sendMessage();
-            
-            inputContainer.appendChild(this.inputField);
-            inputContainer.appendChild(sendButton);
-            
-            // Złożenie okna
+            // Assemble the components
             this.window.appendChild(header);
             this.window.appendChild(this.messagesContainer);
             this.window.appendChild(inputContainer);
             
-            // Dodaj elementy do kontenera
             this.container.appendChild(this.bubble);
             this.container.appendChild(this.window);
+            this.wrapper.appendChild(this.container);
             
-            // Dodaj kontener do strony
-            document.body.appendChild(this.container);
+            // Add to document body
+            document.body.appendChild(this.wrapper);
+            
+            // Store references to elements we'll need to access later
+            this.inputField = this.wrapper.querySelector('.bc-assistant-input');
+            this.sendButton = this.wrapper.querySelector('.bc-assistant-send');
+            this.closeButton = this.wrapper.querySelector('.bc-assistant-close');
+            this.minimizeButton = this.wrapper.querySelector('.bc-assistant-minimize');
         }
         
-        setupEventListeners() {
-            // Kliknięcie bąbelka
-            this.bubble.addEventListener('click', () => {
-                this.toggleWindow();
-            });
+        // Set up all event listeners
+        setupEvents() {
+            // Bubble click - toggle chat window
+            this.bubble.addEventListener('click', () => this.toggleWindow());
             
-            // Obsługa klawisza Enter w polu wiadomości
-            this.inputField.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.sendMessage();
-                }
+            // Close button
+            if (this.closeButton) {
+                this.closeButton.addEventListener('click', () => this.closeWindow());
+            }
+            
+            // Minimize button
+            if (this.minimizeButton) {
+                this.minimizeButton.addEventListener('click', () => this.closeWindow());
+            }
+            
+            // Send button
+            if (this.sendButton) {
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+            }
+            
+            // Input field - handle Enter key
+            if (this.inputField) {
+                this.inputField.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+                
+                // Auto-resize textarea
+                this.inputField.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                });
+            }
+            
+            // Window resize event
+            window.addEventListener('resize', () => {
+                this.isMobile = this.checkIfMobile();
+                this.applyFixes();
             });
         }
         
-        setupDraggable() {
-            const header = this.window.querySelector('.bc-assistant-header');
-            
-            if (!header) return;
-            
-            let isDragging = false;
-            let offsetX, offsetY;
-            
-            header.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                
-                // Zapisz pozycję kliknięcia względem okna
-                const rect = this.window.getBoundingClientRect();
-                offsetX = e.clientX - rect.left;
-                offsetY = e.clientY - rect.top;
-                
-                // Zmień kursor podczas przeciągania
-                header.style.cursor = 'grabbing';
-            });
-            
-            document.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                
-                // Ustaw nową pozycję okna
-                const x = e.clientX - offsetX;
-                const y = e.clientY - offsetY;
-                
-                // Ogranicz pozycję do widocznego obszaru
-                const maxX = window.innerWidth - this.window.offsetWidth;
-                const maxY = window.innerHeight - this.window.offsetHeight;
-                
-                const boundedX = Math.max(0, Math.min(x, maxX));
-                const boundedY = Math.max(0, Math.min(y, maxY));
-                
-                this.window.style.left = boundedX + 'px';
-                this.window.style.top = boundedY + 'px';
-                this.window.style.right = 'auto';
-                this.window.style.bottom = 'auto';
-            });
-            
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-                
-                // Przywróć normalny kursor
-                if (header) {
-                    header.style.cursor = 'grab';
-                }
-            });
-            
-            // Ustaw początkowy kursor
-            header.style.cursor = 'grab';
-        }
-        
+        // Toggle chat window visibility
         toggleWindow() {
-            this.isOpen = !this.isOpen;
-            this.window.style.display = this.isOpen ? 'flex' : 'none';
-            
             if (this.isOpen) {
-                this.inputField.focus();
-                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                this.closeWindow();
+            } else {
+                this.openWindow();
             }
         }
         
+        // Open chat window
+        openWindow() {
+            this.isOpen = true;
+            this.window.style.display = 'flex';
+            
+            // Focus input field
+            if (this.inputField) {
+                setTimeout(() => this.inputField.focus(), 100);
+            }
+            
+            // Scroll to latest message
+            this.scrollToBottom();
+            
+            // Add class to document body to fix scrolling issues
+            document.body.classList.add('bc-assistant-open');
+            document.documentElement.classList.add('bc-assistant-open');
+        }
+        
+        // Close chat window
+        closeWindow() {
+            this.isOpen = false;
+            this.window.style.display = 'none';
+            
+            // Remove body class
+            document.body.classList.remove('bc-assistant-open');
+            document.documentElement.classList.remove('bc-assistant-open');
+        }
+        
+        // Add a message to the chat
         addMessage(role, content) {
+            // Create message object
             const message = {
                 role,
                 content,
                 timestamp: new Date()
             };
             
+            // Store in messages array
             this.messages.push(message);
             
-            // Dodaj wiadomość do interfejsu
-            const messageElement = document.createElement('div');
-            messageElement.className = `bc-message bc-message-${role}`;
+            // Create message element
+            const messageElem = document.createElement('div');
+            messageElem.className = `bc-message bc-message-${role}`;
             
-            const messageContent = document.createElement('div');
-            messageContent.className = 'bc-message-content';
-            messageContent.innerHTML = this.formatMessage(content);
+            // Create message content element
+            const contentElem = document.createElement('div');
+            contentElem.className = 'bc-message-content';
+            contentElem.innerHTML = this.formatMessage(content);
             
-            messageElement.appendChild(messageContent);
-            this.messagesContainer.appendChild(messageElement);
+            // Add timestamp
+            const timestamp = document.createElement('div');
+            timestamp.className = 'bc-message-timestamp';
+            timestamp.textContent = this.formatTime(new Date());
             
-            // Przewiń do najnowszej wiadomości
-            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            // Assemble message
+            messageElem.appendChild(contentElem);
+            messageElem.appendChild(timestamp);
+            
+            // Add to messages container
+            this.messagesContainer.appendChild(messageElem);
+            
+            // Scroll to bottom
+            this.scrollToBottom();
         }
         
+        // Format message content (simple markdown-like parsing)
         formatMessage(text) {
-            // Podstawowe formatowanie tekstu (można rozszerzyć o Markdown)
             return text
                 .replace(/\n/g, '<br>')
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>');
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
         }
         
-        sendMessage() {
+        // Format timestamp
+        formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        // Scroll messages to bottom
+        scrollToBottom() {
+            if (!this.messagesContainer) return;
+            
+            // Immediate scroll
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            
+            // Delayed scroll (for images, etc.)
+            setTimeout(() => {
+                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                
+                // Final scroll after full render
+                setTimeout(() => {
+                    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                    
+                    // Force scroll with scrollIntoView as backup
+                    const lastMessage = this.messagesContainer.lastElementChild;
+                    if (lastMessage) {
+                        lastMessage.scrollIntoView({ behavior: 'auto', block: 'end' });
+                    }
+                }, 300);
+            }, 50);
+        }
+        
+        // Send message to API
+        async sendMessage() {
+            // Get message from input field
             const message = this.inputField.value.trim();
             
-            if (!message || this.isTyping) {
-                return;
-            }
+            // Skip if empty or already processing
+            if (!message || this.isTyping) return;
             
-            // Dodaj wiadomość użytkownika do interfejsu
+            // Add user message to chat
             this.addMessage('user', message);
             
-            // Wyczyść pole wiadomości
+            // Clear input field and reset height
             this.inputField.value = '';
+            this.inputField.style.height = 'auto';
             
-            // Pokaż, że asystent pisze
+            // Show typing indicator
             this.isTyping = true;
             this.showTypingIndicator();
             
-            // Wyślij zapytanie do API
-            this.sendRequest(message)
-                .then(response => {
-                    // Ukryj wskaźnik pisania
-                    this.hideTypingIndicator();
-                    
-                    // Dodaj odpowiedź asystenta do interfejsu
-                    this.addMessage('assistant', response.message);
-                    
-                    this.isTyping = false;
-                })
-                .catch(error => {
-                    this.hideTypingIndicator();
-                    this.addMessage('assistant', 'Przepraszam, wystąpił błąd. Spróbuj ponownie.');
-                    this.isTyping = false;
-                    
-                    if (this.config.debug) {
-                        console.error('BC Assistant Error:', error);
-                    }
+            try {
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('action', this.config.action);
+                formData.append('message', message);
+                formData.append('thread_id', this.threadId);
+                formData.append('nonce', this.config.nonce);
+                
+                // Send to API
+                const response = await fetch(this.config.apiEndpoint, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: formData
                 });
+                
+                // Parse response
+                const data = await response.json();
+                
+                // Hide typing indicator
+                this.hideTypingIndicator();
+                this.isTyping = false;
+                
+                if (data.success) {
+                    // Add assistant response to chat
+                    this.addMessage('assistant', data.data.message);
+                    
+                    // Store thread ID if provided
+                    if (data.data.thread_id) {
+                        this.threadId = data.data.thread_id;
+                        localStorage.setItem('bc_assistant_thread_id', this.threadId);
+                    }
+                } else {
+                    // Show error message
+                    this.addMessage('assistant', 'Przepraszam, wystąpił błąd. Spróbuj ponownie później.');
+                    console.error('BC Assistant API Error:', data);
+                }
+            } catch (error) {
+                // Hide typing indicator
+                this.hideTypingIndicator();
+                this.isTyping = false;
+                
+                // Show error message
+                this.addMessage('assistant', 'Przepraszam, wystąpił błąd połączenia. Spróbuj ponownie później.');
+                console.error('BC Assistant Error:', error);
+            }
         }
         
+        // Show typing indicator
         showTypingIndicator() {
-            const indicatorElement = document.createElement('div');
-            indicatorElement.className = 'bc-message bc-message-assistant bc-typing-indicator';
-            indicatorElement.innerHTML = '<div class="bc-message-content"><div class="bc-typing-dots"><span></span><span></span><span></span></div></div>';
+            const indicatorElem = document.createElement('div');
+            indicatorElem.className = 'bc-message bc-message-assistant bc-typing-indicator';
+            indicatorElem.innerHTML = `
+                <div class="bc-message-content">
+                    <div class="bc-typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
             
-            this.messagesContainer.appendChild(indicatorElement);
-            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            this.messagesContainer.appendChild(indicatorElem);
+            this.scrollToBottom();
         }
         
+        // Hide typing indicator
         hideTypingIndicator() {
             const indicator = this.messagesContainer.querySelector('.bc-typing-indicator');
             if (indicator) {
@@ -313,528 +376,172 @@
             }
         }
         
-        async sendRequest(message) {
-            // Przygotuj dane zapytania
-            const formData = new FormData();
-            formData.append('action', bcAssistantData.action);
-            formData.append('message', message);
-            formData.append('model', this.config.model);
+        // Apply fixes for known issues and conflicts
+        applyFixes() {
+            // Fix for conflict with Droplabs
+            this.fixPositioning();
             
-            // Dodaj nonce dla bezpieczeństwa
-            if (bcAssistantData.nonce) {
-                formData.append('nonce', bcAssistantData.nonce);
+            // Fix z-index issues
+            this.fixZIndex();
+            
+            // Fix mobile-specific issues
+            if (this.isMobile) {
+                this.fixMobileDisplay();
             }
-            
-            // Wyślij zapytanie AJAX do WordPress
-            const response = await fetch(bcAssistantData.apiEndpoint, {
-                method: 'POST',
-                credentials: 'same-origin',
-                body: formData
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (!data.success) {
-                throw new Error(data.message || 'Unknown error');
-            }
-            
-            return data.data;
         }
         
-        // Implementacja trybu głosowego
-        initVoiceAssistant() {
-            console.log("Initializing voice assistant");
+        // Fix positioning based on device and conflicts
+        fixPositioning() {
+            // Apply position based on config
+            const position = this.config.position || 'bottom-right';
             
-            // Utwórz minimalny UI - ikonę mikrofonu
-            this.container = document.createElement('div');
-            this.container.className = 'bc-assistant-voice-container';
-            
-            // Utwórz przycisk mikrofonu
-            this.voiceButton = document.createElement('button');
-            this.voiceButton.className = 'bc-assistant-voice-button';
-            this.voiceButton.innerHTML = '<i class="fas fa-microphone"></i>';
-            this.voiceButton.title = "Asystent głosowy";
-            
-            // Dodaj przycisk do kontenera
-            this.container.appendChild(this.voiceButton);
-            
-            // Dodaj kontener do strony
-            document.body.appendChild(this.container);
-            
-            // Dodaj obsługę kliknięcia
-            this.voiceButton.addEventListener('click', () => {
-                this.startVoiceRecognition();
-            });
-        }
-        
-        // Rozpocznij rozpoznawanie mowy
-        startVoiceRecognition() {
-            // Sprawdź czy przeglądarka obsługuje rozpoznawanie mowy
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert("Przepraszamy, Twoja przeglądarka nie obsługuje rozpoznawania mowy.");
-                return;
-            }
-            
-            // Zmień ikonę na aktywną
-            this.voiceButton.innerHTML = '<i class="fas fa-microphone-alt"></i>';
-            this.voiceButton.classList.add('recording');
-            
-            // Utwórz instancję rozpoznawania mowy
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            
-            recognition.lang = 'pl-PL';
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                console.log("Voice recognized:", transcript);
-                
-                // Przetwórz rozpoznany tekst
-                this.processVoiceInput(transcript);
-            };
-            
-            recognition.onerror = (event) => {
-                console.error("Speech recognition error:", event.error);
-                // Przywróć ikonę mikrofonu
-                this.voiceButton.innerHTML = '<i class="fas fa-microphone"></i>';
-                this.voiceButton.classList.remove('recording');
-            };
-            
-            recognition.onend = () => {
-                // Przywróć ikonę mikrofonu
-                this.voiceButton.innerHTML = '<i class="fas fa-microphone"></i>';
-                this.voiceButton.classList.remove('recording');
-            };
-            
-            // Rozpocznij rozpoznawanie
-            recognition.start();
-        }
-        
-        // Przetwórz dane wejściowe głosowe
-        processVoiceInput(text) {
-            console.log("Processing voice input:", text);
-            
-            // Pokaż tekst użytkownika
-            this.showSpeechBubble('user', text);
-            
-            // Wskaźnik ładowania
-            this.showSpeechBubble('loading', '');
-            
-            // Wyślij zapytanie do API
-            this.sendRequest(text)
-                .then(response => {
-                    // Ukryj wskaźnik ładowania
-                    this.hideSpeechBubble('loading');
-                    
-                    // Pokaż odpowiedź asystenta
-                    this.showSpeechBubble('assistant', response.message);
-                    
-                    // Odczytaj odpowiedź
-                    this.speakResponse(response.message);
-                    
-                    // Sprawdź czy pytanie dotyczy kontaktu z recepcją
-                    if (text.toLowerCase().includes('recepcj') || text.toLowerCase().includes('umówi') || 
-                        text.toLowerCase().includes('wizyt') || text.toLowerCase().includes('kontakt')) {
-                        // Pokaż przycisk połączenia z recepcją
-                        this.showCallButton();
-                    }
-                })
-                .catch(error => {
-                    // Ukryj wskaźnik ładowania
-                    this.hideSpeechBubble('loading');
-                    
-                    // Pokaż błąd
-                    this.showSpeechBubble('assistant', 'Przepraszam, wystąpił błąd. Spróbuj ponownie.');
-                    console.error('BC Assistant Error:', error);
+            // Set position-specific styles
+            if (position === 'bottom-right') {
+                Object.assign(this.wrapper.style, {
+                    bottom: this.isMobile ? '100px' : '20px',
+                    right: '20px',
+                    left: 'auto',
+                    top: 'auto'
                 });
-        }
-        
-        // Pokaż bąbelek mowy
-        showSpeechBubble(role, content) {
-            // Usuń poprzedni bąbelek tego samego typu
-            const existingBubble = document.querySelector(`.bc-assistant-speech-bubble.${role}`);
-            if (existingBubble) {
-                existingBubble.remove();
+            } else if (position === 'bottom-left') {
+                Object.assign(this.wrapper.style, {
+                    bottom: this.isMobile ? '100px' : '20px',
+                    left: '20px', 
+                    right: 'auto',
+                    top: 'auto'
+                });
+            } else if (position === 'top-right') {
+                Object.assign(this.wrapper.style, {
+                    top: '20px',
+                    right: '20px',
+                    bottom: 'auto',
+                    left: 'auto'
+                });
+            } else if (position === 'top-left') {
+                Object.assign(this.wrapper.style, {
+                    top: '20px',
+                    left: '20px',
+                    bottom: 'auto',
+                    right: 'auto'
+                });
             }
             
-            // Utwórz nowy bąbelek
-            const bubble = document.createElement('div');
-            bubble.className = `bc-assistant-speech-bubble ${role}`;
+            // Check for Droplabs presence
+            const hasDroplabs = this.detectDroplabs();
             
-            if (role === 'loading') {
-                bubble.innerHTML = '<div class="bc-assistant-loading-dots"><span></span><span></span><span></span></div>';
-            } else {
-                bubble.textContent = content;
-            }
-            
-            // Dodaj bąbelek do strony
-            document.body.appendChild(bubble);
-            
-            // Automatycznie ukryj bąbelek po czasie (poza loading)
-            if (role !== 'loading') {
-                setTimeout(() => {
-                    bubble.classList.add('fade-out');
-                    setTimeout(() => {
-                        bubble.remove();
-                    }, 500);
-                }, 5000);
+            if (hasDroplabs && position.includes('bottom')) {
+                // Move higher to avoid conflict with Droplabs
+                this.wrapper.style.bottom = '150px';
             }
         }
         
-        // Ukryj bąbelek mowy
-        hideSpeechBubble(role) {
-            const bubble = document.querySelector(`.bc-assistant-speech-bubble.${role}`);
-            if (bubble) {
-                bubble.classList.add('fade-out');
-                setTimeout(() => {
-                    bubble.remove();
-                }, 500);
+        // Detect if Droplabs is present on the page
+        detectDroplabs() {
+            const droplabsElements = document.querySelectorAll(
+                '.droplabs-container, .droplabs-widget, .droplabs-bubble, [id*="droplabs"]'
+            );
+            return droplabsElements.length > 0;
+        }
+        
+        // Fix z-index issues
+        fixZIndex() {
+            // Ensure high z-index for all components
+            const highZIndex = '9999999';
+            
+            this.wrapper.style.zIndex = highZIndex;
+            
+            if (this.container) {
+                this.container.style.zIndex = highZIndex;
+            }
+            
+            if (this.bubble) {
+                this.bubble.style.zIndex = highZIndex;
+            }
+            
+            if (this.window) {
+                this.window.style.zIndex = highZIndex;
             }
         }
         
-        // Odczytaj odpowiedź za pomocą syntezy mowy
-        speakResponse(text) {
-            // Sprawdź czy przeglądarka obsługuje syntezę mowy
-            if (!('speechSynthesis' in window)) {
-                console.error("Speech synthesis not supported");
-                return;
+        // Fix mobile-specific display issues
+        fixMobileDisplay() {
+            // Ensure bubble is properly sized and visible
+            if (this.bubble) {
+                Object.assign(this.bubble.style, {
+                    width: '50px',
+                    height: '50px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    visibility: 'visible',
+                    opacity: '1'
+                });
             }
             
-            // Zatrzymaj poprzednią mowę
-            window.speechSynthesis.cancel();
-            
-            // Utwórz nową wypowiedź
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'pl-PL';
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            
-            // Znajdź polski głos
-            const voices = window.speechSynthesis.getVoices();
-            const polishVoice = voices.find(voice => voice.lang.includes('pl'));
-            if (polishVoice) {
-                utterance.voice = polishVoice;
+            // Adjust window size for mobile
+            if (this.window) {
+                Object.assign(this.window.style, {
+                    width: '85%',
+                    height: '70vh',
+                    maxWidth: '350px'
+                });
             }
             
-            // Odtwórz
-            window.speechSynthesis.speak(utterance);
+            // Firefox-specific fixes
+            if (navigator.userAgent.indexOf('Firefox') !== -1) {
+                if (this.wrapper) {
+                    Object.assign(this.wrapper.style, {
+                        minWidth: '50px',
+                        minHeight: '50px',
+                        clipPath: 'none',
+                        transform: 'none',
+                        pointerEvents: 'auto'
+                    });
+                }
+            }
         }
         
-        // Pokaż przycisk połączenia z recepcją
-        showCallButton() {
-            // Usuń poprzedni przycisk, jeśli istnieje
-            const existingButton = document.querySelector('.bc-assistant-call-button');
-            if (existingButton) {
-                existingButton.remove();
+        // Ensure visibility (called periodically)
+        ensureVisibility() {
+            if (this.wrapper) {
+                this.wrapper.style.display = 'block';
+                this.wrapper.style.visibility = 'visible';
+                this.wrapper.style.opacity = '1';
+                
+                // Force all child elements to be visible too
+                if (this.bubble) {
+                    this.bubble.style.display = 'flex';
+                    this.bubble.style.visibility = 'visible';
+                    this.bubble.style.opacity = '1';
+                }
+                
+                // Only make window visible if it's supposed to be open
+                if (this.window) {
+                    if (this.isOpen) {
+                        this.window.style.display = 'flex';
+                    } else {
+                        this.window.style.display = 'none';
+                    }
+                }
             }
-            
-            // Utwórz przycisk
-            const callButton = document.createElement('button');
-            callButton.className = 'bc-assistant-call-button';
-            callButton.innerHTML = '<i class="fas fa-phone"></i> Połącz z recepcją';
-            
-            // Dodaj obsługę kliknięcia
-            callButton.addEventListener('click', () => {
-                window.location.href = 'tel:+48123456789';
-            });
-            
-            // Dodaj przycisk do strony
-            document.body.appendChild(callButton);
-            
-            // Automatycznie ukryj przycisk po 10 sekundach
-            setTimeout(() => {
-                callButton.classList.add('fade-out');
-                setTimeout(() => {
-                    callButton.remove();
-                }, 500);
-            }, 10000);
         }
     }
-
-    // Inicjalizacja asystenta po załadowaniu strony
-    $(document).ready(function() {
-        // Utwórz instancję asystenta
+    
+    // Initialize the assistant once DOM is loaded
+    function initBCAssistant() {
         try {
-            window.bcAssistant = new BCAssistant(bcAssistantConfig);
-            if (bcAssistantConfig.debug) {
-                console.log("BC Assistant successfully initialized");
-            }
+            window.bcAssistant = new BCAssistant(bcConfig);
+            console.log("BC Assistant initialized successfully");
         } catch (error) {
             console.error("BC Assistant initialization error:", error);
         }
-    });
-
-
-// Function to ensure BC Assistant visibility and handle Droplabs conflicts
-
-function ensureBCAssistantVisibility() {
-    // Wait for DOM to be fully loaded
+    }
+    
+    // Initialize when document is ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initFixes);
+        document.addEventListener('DOMContentLoaded', initBCAssistant);
     } else {
-        initFixes();
-    }
-
-    function initFixes() {
-        // Apply fixes immediately and then again after short delays
-        applyFixes();
-        setTimeout(applyFixes, 500);
-        setTimeout(applyFixes, 1000);
-        setTimeout(applyFixes, 2000);
-        
-        // Also run fixes on page resize
-        window.addEventListener('resize', applyFixes);
-        
-        // Set interval to keep checking for 30 seconds
-        const checkInterval = setInterval(applyFixes, 1000);
-        setTimeout(function() {
-            clearInterval(checkInterval);
-        }, 30000);
+        initBCAssistant();
     }
     
-    function applyFixes() {
-        // Fix BC Assistant container
-        const bcContainer = document.querySelector('.bc-assistant-container');
-        if (bcContainer) {
-            const styles = {
-                'position': 'fixed',
-                'z-index': '9999999',
-                'display': 'block',
-                'visibility': 'visible',
-                'opacity': '1'
-            };
-            
-            Object.assign(bcContainer.style, styles);
-            
-            // Force bottom-right position on mobile
-            if (window.innerWidth <= 767) {
-                Object.assign(bcContainer.style, {
-                    'bottom': '100px',
-                    'right': '20px',
-                    'left': 'auto',
-                    'top': 'auto'
-                });
-                
-                // Firefox-specific fix
-                if (navigator.userAgent.indexOf('Firefox') !== -1) {
-                    Object.assign(bcContainer.style, {
-                        'min-width': '50px',
-                        'min-height': '50px',
-                        'box-sizing': 'border-box',
-                        'clip': 'auto',
-                        'pointer-events': 'auto',
-                        'transform': 'scale(1)'
-                    });
-                }
-            }
-        } else {
-            // If container doesn't exist, try to recreate it (extreme case)
-            if (window.innerWidth <= 767 && typeof BCAssistant === 'function') {
-                try {
-                    window.bcAssistant = new BCAssistant(bcAssistantConfig);
-                } catch (e) {
-                    console.error('Could not recreate BC Assistant:', e);
-                }
-            }
-        }
-        
-        // Fix BC Assistant bubble
-        const bcBubble = document.querySelector('.bc-assistant-bubble');
-        if (bcBubble) {
-            const bubbleStyles = {
-                'z-index': '9999999',
-                'display': 'flex',
-                'visibility': 'visible',
-                'opacity': '1',
-                'align-items': 'center',
-                'justify-content': 'center'
-            };
-            
-            Object.assign(bcBubble.style, bubbleStyles);
-            
-            // Mobile specific styles
-            if (window.innerWidth <= 767) {
-                Object.assign(bcBubble.style, {
-                    'width': '50px',
-                    'height': '50px',
-                    'border-radius': '50%'
-                });
-                
-                // Firefox-specific fix
-                if (navigator.userAgent.indexOf('Firefox') !== -1) {
-                    Object.assign(bcBubble.style, {
-                        'pointer-events': 'auto',
-                        'transform': 'scale(1)',
-                        'clip-path': 'none'
-                    });
-                }
-            }
-        }
-    }
-}
-
-// Run the function to ensure BC Assistant visibility
-ensureBCAssistantVisibility();
-
-// Enhanced Amplitude error suppression
-window.addEventListener('error', function(event) {
-    // Check if the error is related to Amplitude
-    if (event && event.message && 
-        (event.message.includes('Amplitude') || 
-         event.message.toLowerCase().includes('amplitude') ||
-         (event.filename && event.filename.includes('bubble.js')))) {
-        console.log('BC Assistant: Prevented error:', event.message);
-        event.preventDefault();
-        return true;
-    }
-    return false;
-}, true);
-    
-// Fix scrolling issues when chat window is open
-function fixScrollingIssues() {
-    // Find the chat window and bubble
-    const chatWindow = document.querySelector('.bc-assistant-window');
-    const chatBubble = document.querySelector('.bc-assistant-bubble');
-    
-    if (!chatWindow || !chatBubble) return;
-    
-    // Track if the chat is open
-    let isChatOpen = false;
-    
-    // Add click handler to toggle body scroll class
-    chatBubble.addEventListener('click', function() {
-        isChatOpen = !isChatOpen;
-        
-        if (isChatOpen) {
-            document.body.classList.add('bc-assistant-open');
-            document.documentElement.classList.add('bc-assistant-open');
-        } else {
-            document.body.classList.remove('bc-assistant-open');
-            document.documentElement.classList.remove('bc-assistant-open');
-        }
-    });
-    
-    // Also add click handler to close button
-    const closeButton = chatWindow.querySelector('.bc-assistant-close');
-    if (closeButton) {
-        closeButton.addEventListener('click', function() {
-            document.body.classList.remove('bc-assistant-open');
-            document.documentElement.classList.remove('bc-assistant-open');
-            isChatOpen = false;
-        });
-    }
-}
-
-// Run the function after DOM is loaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fixScrollingIssues);
-} else {
-    fixScrollingIssues();
-}
-
-// Single, consolidated fix for BC Assistant visibility and scrolling
-$(document).ready(function() {
-    // Fix visibility and ensure proper display
-    function fixBCAssistantDisplay() {
-        // Fix BC Assistant container
-        const bcContainer = document.querySelector('.bc-assistant-container');
-        if (bcContainer) {
-            bcContainer.style.position = 'fixed';
-            bcContainer.style.zIndex = '9999999';
-            bcContainer.style.display = 'block';
-            bcContainer.style.visibility = 'visible';
-            bcContainer.style.opacity = '1';
-            
-            // Mobile positioning
-            if (window.innerWidth <= 767) {
-                bcContainer.style.bottom = '100px';
-                bcContainer.style.right = '20px';
-                bcContainer.style.left = 'auto';
-                bcContainer.style.top = 'auto';
-            }
-        }
-        
-        // Fix BC Assistant bubble
-        const bcBubble = document.querySelector('.bc-assistant-bubble');
-        if (bcBubble) {
-            bcBubble.style.zIndex = '9999999';
-            bcBubble.style.display = 'flex';
-            bcBubble.style.visibility = 'visible';
-            bcBubble.style.opacity = '1';
-            bcBubble.style.alignItems = 'center';
-            bcBubble.style.justifyContent = 'center';
-        }
-        
-        // Fix window display
-        const bcWindow = document.querySelector('.bc-assistant-window');
-        if (bcWindow) {
-            bcWindow.style.zIndex = '9999999';
-            
-            // Ensure it's hidden by default unless explicitly toggled
-            if (bcWindow.style.display !== 'flex') {
-                bcWindow.style.display = 'none';
-            }
-        }
-    }
-    
-    // Fix scrolling when chat is open
-    function setupScrollClassHandlers() {
-        const chatWindow = document.querySelector('.bc-assistant-window');
-        const chatBubble = document.querySelector('.bc-assistant-bubble');
-        
-        if (!chatWindow || !chatBubble) return;
-        
-        // Remove any existing event listeners (to prevent duplicates)
-        const bubbleClone = chatBubble.cloneNode(true);
-        chatBubble.parentNode.replaceChild(bubbleClone, chatBubble);
-        
-        // Add fresh event listener
-        bubbleClone.addEventListener('click', function() {
-            if (chatWindow.style.display === 'flex') {
-                document.body.classList.remove('bc-assistant-open');
-                document.documentElement.classList.remove('bc-assistant-open');
-            } else {
-                document.body.classList.add('bc-assistant-open');
-                document.documentElement.classList.add('bc-assistant-open');
-            }
-        });
-        
-        // Handle close button
-        const closeButton = chatWindow.querySelector('.bc-assistant-close');
-        if (closeButton) {
-            const closeBtnClone = closeButton.cloneNode(true);
-            closeButton.parentNode.replaceChild(closeBtnClone, closeButton);
-            
-            closeBtnClone.addEventListener('click', function() {
-                document.body.classList.remove('bc-assistant-open');
-                document.documentElement.classList.remove('bc-assistant-open');
-            });
-        }
-    }
-    
-    // Run both fixes
-    fixBCAssistantDisplay();
-    setupScrollClassHandlers();
-    
-    // Also run on resize and periodically
-    window.addEventListener('resize', fixBCAssistantDisplay);
-    setInterval(fixBCAssistantDisplay, 2000);
-    
-    // Error handling for external scripts
-    window.addEventListener('error', function(event) {
-        if (event && event.message && 
-            (event.message.includes('Amplitude') || 
-            event.filename && event.filename.includes('bubble.js'))) {
-            console.log('BC Assistant: Prevented external error');
-            event.preventDefault();
-            return true;
-        }
-        return false;
-    }, true);
-});
+})(jQuery);

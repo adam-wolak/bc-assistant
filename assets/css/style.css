@@ -1,169 +1,175 @@
 /**
- * BC Assistant - style główne
- * Kompleksowa poprawka kompatybilności z Droplabs
+ * BC Assistant - Complete CSS Fix
+ * This CSS resolves all mobile display issues and Droplabs compatibility problems
  */
 
-/* Kontenery i pozycjonowanie */
-.bc-assistant-container {
-    position: fixed !important;
-    z-index: 999999 !important; /* Very high z-index to ensure visibility */
+/* 
+ * Core structure
+ * Using a more specific selector hierarchy to avoid conflicts 
+ */
+.bc-assistant-wrapper {
+    position: fixed;
+    z-index: 999999;
     box-sizing: border-box;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+    display: block;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
 }
 
-/* Pozycje asystenta */
-.bc-position-bottom-right {
-    right: 20px !important;
-    bottom: 100px !important; /* Higher position to avoid Droplabs */
+/* Position variations with clear specificity */
+.bc-assistant-wrapper[data-position="bottom-right"] {
+    right: 20px;
+    bottom: 20px;
 }
 
-.bc-position-bottom-left {
-    left: 20px !important;
-    bottom: 100px !important;
+.bc-assistant-wrapper[data-position="bottom-left"] {
+    left: 20px;
+    bottom: 20px;
 }
 
-.bc-position-top-right {
-    right: 20px !important;
-    top: 20px !important;
+.bc-assistant-wrapper[data-position="top-right"] {
+    right: 20px;
+    top: 20px;
 }
 
-.bc-position-top-left {
-    left: 20px !important;
-    top: 20px !important;
+.bc-assistant-wrapper[data-position="top-left"] {
+    left: 20px;
+    top: 20px;
 }
 
-/* Stylizacja bąbelka */
-.bc-assistant-bubble {
+/* Droplabs conflict resolution */
+.bc-assistant-wrapper[data-has-droplabs="true"][data-position="bottom-right"],
+.bc-assistant-wrapper[data-has-droplabs="true"][data-position="bottom-left"] {
+    bottom: 150px;
+}
+
+/* Container */
+.bc-assistant-wrapper .bc-assistant-container {
+    position: relative;
+    display: block;
+    z-index: inherit;
+    box-sizing: border-box;
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Bubble button */
+.bc-assistant-wrapper .bc-assistant-bubble {
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background-color: #A67C52; /* Kolor Bielsko Clinic */
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    background-color: #A67C52; /* Bielsko Clinic color */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
-    z-index: 999999 !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+    z-index: inherit;
+    visibility: visible;
+    opacity: 1;
+    color: white;
+    font-size: 24px;
 }
 
-.bc-assistant-bubble:hover {
+.bc-assistant-wrapper .bc-assistant-bubble:hover {
     transform: scale(1.1);
 }
 
-.bc-default-avatar {
-    width: 30px;
-    height: 30px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>');
-    background-repeat: no-repeat;
-    background-position: center;
-}
-
-.bc-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-/* Stylizacja okna asystenta */
-.bc-assistant-window {
-    display: none !important; /* Ensure it's always hidden by default */
-    position: fixed !important;
-    bottom: 170px !important; /* Move even higher to ensure no overlap */
-    right: 20px !important;
+/* Chat window */
+.bc-assistant-wrapper .bc-assistant-window {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
     width: 350px;
     height: 500px;
     background-color: #fff;
     border-radius: 10px;
     box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
-    display: flex;
+    display: none; /* Hidden by default */
     flex-direction: column;
     overflow: hidden;
-    z-index: 999999 !important;
+    z-index: inherit;
     box-sizing: border-box;
 }
 
-/* Add !important to your toggle function's display styles */
-.bc-assistant-window[style*="display: flex"] {
-    display: flex !important;
+/* Left position adjustment */
+.bc-assistant-wrapper[data-position="bottom-left"] .bc-assistant-window,
+.bc-assistant-wrapper[data-position="top-left"] .bc-assistant-window {
+    right: auto;
+    left: 0;
 }
 
-.bc-position-bottom-left .bc-assistant-window {
-    left: 20px !important;
-    right: auto !important;
+/* Top position adjustment */
+.bc-assistant-wrapper[data-position="top-right"] .bc-assistant-window,
+.bc-assistant-wrapper[data-position="top-left"] .bc-assistant-window {
+    bottom: auto;
+    top: 70px;
 }
 
-.bc-position-top-right .bc-assistant-window {
-    top: 90px !important;
-    bottom: auto !important;
-}
-
-.bc-position-top-left .bc-assistant-window {
-    top: 90px !important;
-    left: 20px !important;
-    bottom: auto !important;
-    right: auto !important;
-}
-
-/* Nagłówek */
-.bc-assistant-header {
+/* Chat header */
+.bc-assistant-wrapper .bc-assistant-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 15px;
-    background-color: #A67C52; /* Kolor Bielsko Clinic */
+    background-color: #A67C52; /* Bielsko Clinic color */
     color: #fff;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
 }
 
-.bc-assistant-title {
+.bc-assistant-wrapper .bc-assistant-title {
     font-weight: bold;
     font-size: 16px;
 }
 
-.bc-assistant-close {
+.bc-assistant-wrapper .bc-assistant-controls {
+    display: flex;
+    align-items: center;
+}
+
+.bc-assistant-wrapper .bc-assistant-minimize,
+.bc-assistant-wrapper .bc-assistant-close {
     background: none;
     border: none;
     color: #fff;
-    font-size: 20px;
+    font-size: 16px;
     cursor: pointer;
     padding: 0;
-    margin: 0;
+    margin-left: 10px;
     line-height: 1;
 }
 
-/* Kontener wiadomości */
-.bc-assistant-messages {
+/* Messages container */
+.bc-assistant-wrapper .bc-assistant-messages {
     flex: 1;
     overflow-y: auto;
     padding: 15px;
     background-color: #f5f5f5;
     display: flex;
     flex-direction: column;
+    scroll-behavior: smooth;
 }
 
-/* Stylizacja wiadomości */
-.bc-message {
-    margin-bottom: 10px;
+/* Message styling */
+.bc-assistant-wrapper .bc-message {
+    margin-bottom: 15px;
     max-width: 80%;
     display: flex;
+    flex-direction: column;
 }
 
-.bc-message-user {
+.bc-assistant-wrapper .bc-message-user {
     align-self: flex-end;
 }
 
-.bc-message-assistant {
+.bc-assistant-wrapper .bc-message-assistant {
     align-self: flex-start;
 }
 
-.bc-message-content {
+.bc-assistant-wrapper .bc-message-content {
     padding: 10px 15px;
     border-radius: 18px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -171,27 +177,34 @@
     line-height: 1.4;
 }
 
-.bc-message-user .bc-message-content {
-    background-color: #A67C52; /* Kolor Bielsko Clinic */
+.bc-assistant-wrapper .bc-message-user .bc-message-content {
+    background-color: #A67C52; /* Bielsko Clinic color */
     color: #fff;
     border-bottom-right-radius: 5px;
 }
 
-.bc-message-assistant .bc-message-content {
+.bc-assistant-wrapper .bc-message-assistant .bc-message-content {
     background-color: #fff;
     color: #333;
     border-bottom-left-radius: 5px;
 }
 
-/* Pole wiadomości */
-.bc-assistant-input-container {
+.bc-assistant-wrapper .bc-message-timestamp {
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+    text-align: right;
+}
+
+/* Input container */
+.bc-assistant-wrapper .bc-assistant-input-container {
     display: flex;
     padding: 10px;
     border-top: 1px solid #eee;
     background-color: #fff;
 }
 
-.bc-assistant-input {
+.bc-assistant-wrapper .bc-assistant-input {
     flex: 1;
     border: 1px solid #ddd;
     border-radius: 20px;
@@ -199,54 +212,65 @@
     font-size: 14px;
     resize: none;
     outline: none;
-    max-height: 100px;
     min-height: 40px;
+    max-height: 100px;
+    overflow-y: auto;
 }
 
-.bc-assistant-send {
-    background-color: #A67C52; /* Kolor Bielsko Clinic */
+.bc-assistant-wrapper .bc-assistant-input:focus {
+    border-color: #A67C52;
+    box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.1);
+}
+
+.bc-assistant-wrapper .bc-assistant-send {
+    background-color: #A67C52;
     color: #fff;
     border: none;
-    border-radius: 20px;
-    padding: 0 15px;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
     margin-left: 10px;
     cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.3s ease;
-}
-
-.bc-assistant-send:hover {
-    background-color: #8D6848;
-}
-
-/* Wskaźnik pisania */
-.bc-typing-dots {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 20px;
+    transition: background-color 0.3s;
 }
 
-.bc-typing-dots span {
+.bc-assistant-wrapper .bc-assistant-send:hover {
+    background-color: #8D6848;
+}
+
+/* Typing indicator */
+.bc-assistant-wrapper .bc-typing-indicator {
+    margin-bottom: 10px;
+}
+
+.bc-assistant-wrapper .bc-typing-dots {
+    display: flex;
+    align-items: center;
+}
+
+.bc-assistant-wrapper .bc-typing-dots span {
     width: 8px;
     height: 8px;
     margin: 0 2px;
-    background-color: #aaa;
+    background-color: #A67C52;
     border-radius: 50%;
     display: inline-block;
-    animation: bc-typing 1.4s infinite both;
+    animation: bc-typing 1.4s infinite ease-in-out both;
 }
 
-.bc-typing-dots span:nth-child(2) {
+.bc-assistant-wrapper .bc-typing-dots span:nth-child(2) {
     animation-delay: 0.2s;
 }
 
-.bc-typing-dots span:nth-child(3) {
+.bc-assistant-wrapper .bc-typing-dots span:nth-child(3) {
     animation-delay: 0.4s;
 }
 
 @keyframes bc-typing {
-    0% {
+    0%, 80%, 100% {
         transform: scale(0.75);
         opacity: 0.2;
     }
@@ -254,317 +278,134 @@
         transform: scale(1);
         opacity: 1;
     }
-    100% {
-        transform: scale(0.75);
-        opacity: 0.2;
-    }
 }
 
-/* Formatowanie wiadomości */
-.bc-message-content strong {
-    font-weight: bold;
-}
-
-.bc-message-content em {
-    font-style: italic;
-}
-
-.bc-message-content a {
-    color: #0078ff;
+/* Message content formatting */
+.bc-assistant-wrapper .bc-message-content a {
+    color: inherit;
     text-decoration: underline;
 }
 
-.bc-message-assistant .bc-message-content a {
-    color: #0066cc;
+.bc-assistant-wrapper .bc-message-content code {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
 }
 
-.bc-message-user .bc-message-content a {
-    color: #e6f0ff;
+.bc-assistant-wrapper .bc-message-content pre {
+    background-color: #1E1E1E;
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin: 10px 0;
 }
 
+.bc-assistant-wrapper .bc-message-content pre code {
+    background-color: transparent;
+    color: #FFFFFF;
+    padding: 0;
+}
 
-/* Responsywność dla urządzeń mobilnych */
+/* Scrollbar styling */
+.bc-assistant-wrapper .bc-assistant-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.bc-assistant-wrapper .bc-assistant-messages::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.bc-assistant-wrapper .bc-assistant-messages::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.bc-assistant-wrapper .bc-assistant-input::-webkit-scrollbar {
+    width: 6px;
+}
+
+.bc-assistant-wrapper .bc-assistant-input::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.bc-assistant-wrapper .bc-assistant-input::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+/* Mobile styles */
 @media (max-width: 767px) {
-    /* Force BC Assistant to be visible on mobile */
-    .bc-assistant-container {
+    /* Forceful mobile positioning and visibility */
+    .bc-assistant-wrapper {
+        bottom: 100px !important; /* Higher position on mobile */
+        right: 20px !important;
+        left: auto !important;
+        top: auto !important;
+        position: fixed !important;
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
-        bottom: 100px !important;
-        right: 20px !important;
-        left: auto !important; /* Override any left positioning */
-        top: auto !important; /* Override any top positioning */
+        z-index: 9999999 !important; /* Even higher z-index for mobile */
     }
     
-    .bc-assistant-bubble {
+    /* Ensure bubble is visible */
+    .bc-assistant-wrapper .bc-assistant-bubble {
         width: 50px !important;
         height: 50px !important;
+        font-size: 20px !important;
         display: flex !important;
         visibility: visible !important;
         opacity: 1 !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
-    .bc-assistant-window {
-        width: 85% !important;
+    /* Window sizing for mobile */
+    .bc-assistant-wrapper .bc-assistant-window {
+        width: 85vw !important;
+        max-width: 350px !important;
         height: 70vh !important;
-        bottom: 170px !important;
-        right: 10px !important;
+        max-height: 500px !important;
+        right: 0 !important;
     }
     
-    .bc-position-bottom-left .bc-assistant-window {
-        left: 10px !important;
+    /* Ensure messages fit mobile screen better */
+    .bc-assistant-wrapper .bc-message {
+        max-width: 90% !important;
     }
     
-    .bc-message {
-        max-width: 90%;
+    /* Better tap target and readability */
+    .bc-assistant-wrapper .bc-assistant-input {
+        font-size: 16px !important; /* Better size for touch devices */
+        min-height: 44px !important; /* Better tap target */
     }
     
-    .bc-default-avatar, .bc-avatar {
-        width: 25px;
-        height: 25px;
-    }
-    
-    .bc-assistant-header {
-        padding: 10px;
-    }
-    
-    .bc-assistant-input {
-        font-size: 16px; /* Lepszy rozmiar dla urządzeń dotykowych */
-        padding: 8px 12px;
-    }
-    
-}
-
-/* Dodatkowe usprawnienia dla bardzo małych ekranów */
-@media (max-width: 480px) {
-    .bc-assistant-window {
-        width: 90% !important;
-        height: 60vh !important;
-        bottom: 170px !important;
-        right: 5% !important;
-        left: 5% !important;
-    }
-    
-    .bc-position-bottom-right {
-        bottom: 100px !important;
-        right: 20px !important;
+    .bc-assistant-wrapper .bc-assistant-send {
+        width: 44px !important;
+        height: 44px !important;
     }
 }
 
-/* Style dla trybu głosowego */
-.bc-assistant-voice-container {
-    position: fixed !important;
-    bottom: 100px !important;
-    right: 20px !important;
-    z-index: 999999 !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.bc-assistant-voice-button {
-    width: 50px !important;
-    height: 50px !important;
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    border-radius: 50%;
-    background-color: #4A90E2;
-    color: white;
-    border: none;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.bc-assistant-voice-button:hover {
-    transform: scale(1.1);
-}
-
-.bc-assistant-voice-button.recording {
-    background-color: #E24A4A;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.1);
-    }
-    100% {
-        transform: scale(1);
-    }
-}
-
-.bc-assistant-speech-bubble {
-    position: fixed !important;
-    bottom: 90px !important;
-    right: 20px !important;
-    max-width: 300px !important;
-    padding: 15px !important;
-    border-radius: 10px !important;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
-    z-index: 999999 !important;
-    transition: opacity 0.5s ease !important;
-}
-
-.bc-assistant-speech-bubble.user {
-    background-color: #E3F2FD;
-    color: #333;
-    border-bottom-right-radius: 0;
-}
-
-.bc-assistant-speech-bubble.assistant {
-    background-color: #4A90E2;
-    color: white;
-    border-bottom-left-radius: 0;
-}
-
-.bc-assistant-speech-bubble.loading {
-    background-color: #F5F5F5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 40px;
-}
-
-.bc-assistant-loading-dots {
-    display: flex;
-}
-
-.bc-assistant-loading-dots span {
-    width: 8px;
-    height: 8px;
-    margin: 0 3px;
-    background-color: #A67C52;
-    border-radius: 50%;
-    animation: bc-assistant-loading 1.4s infinite ease-in-out both;
-}
-
-.bc-assistant-loading-dots span:nth-child(1) {
-    animation-delay: -0.32s;
-}
-
-.bc-assistant-loading-dots span:nth-child(2) {
-    animation-delay: -0.16s;
-}
-
-@keyframes bc-assistant-loading {
-    0%, 80%, 100% {
-        transform: scale(0);
-    }
-    40% {
-        transform: scale(1);
-    }
-}
-
-.bc-assistant-speech-bubble.fade-out {
-    opacity: 0;
-}
-
-/* Przycisk połączenia z recepcją */
-.bc-assistant-call-button {
-    position: fixed !important;
-    bottom: 150px !important;
-    right: 20px !important;
-    background-color: #28a745;
-    color: white;
-    padding: 10px 15px;
-    border-radius: 5px;
-    border: none;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    z-index: 999999 !important;
-}
-
-.bc-assistant-call-button i {
-    margin-right: 8px;
-}
-
-/* Super aggressive mobile fix specifically for Firefox */
+/* Firefox-specific fixes */
 @-moz-document url-prefix() {
     @media (max-width: 767px) {
-        html body .bc-assistant-container,
-        html body .bc-position-bottom-right {
-            position: fixed !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            z-index: 99999999 !important; /* Ultra high z-index */
-            bottom: 100px !important;
-            right: 20px !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            pointer-events: auto !important;
-            clip: auto !important;
-            transform: none !important;
-            width: auto !important;
-            height: auto !important;
+        .bc-assistant-wrapper {
             min-width: 50px !important;
             min-height: 50px !important;
-        }
-        
-        html body .bc-assistant-bubble {
-            width: 50px !important;
-            height: 50px !important;
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            pointer-events: auto !important;
-            border-radius: 50% !important;
-            background-color: #A67C52 !important;
-            z-index: 99999999 !important;
             clip: auto !important;
+            pointer-events: auto !important;
             transform: none !important;
         }
+        
+        .bc-assistant-wrapper .bc-assistant-bubble {
+            transform: none !important;
+            clip-path: none !important;
+        }
     }
 }
 
-/* Additional fix for very small screens and portrait orientation */
-@media (max-width: 480px) and (orientation: portrait) {
-    body {
-        overflow-x: hidden; /* Prevent horizontal scrolling */
-    }
-    
-    .bc-assistant-container,
-    .bc-assistant-bubble,
-    
-    /* Force visibility on scroll */
-    html.scrolling .bc-assistant-container,
-    html.scrolling .bc-assistant-bubble,
-}
-
-/* Fix scrolling issues on mobile */
-body.has-bc-assistant-open,
-html.has-bc-assistant-open {
-    overflow: auto !important;
-    position: relative !important;
-    height: auto !important;
-}
-
-
-/* Ensure BC Assistant is above everything */
-.bc-assistant-container,
-.bc-assistant-bubble {
-    z-index: 9999999 !important;
-    bottom: 150px !important; /* Position higher to avoid overlap */
-}
-
-/* For very small screens, preserve scrolling */
-@media (max-width: 480px) {
-    body, html {
-        overflow-x: hidden !important;
-        overflow-y: auto !important;
-    }
-}
-
-/* Fix scrolling issues on mobile */
+/* Fix scrolling issues when chat is open */
 body.bc-assistant-open,
 html.bc-assistant-open {
     overflow: auto !important;
@@ -572,7 +413,7 @@ html.bc-assistant-open {
     height: auto !important;
 }
 
-/* For very small screens, preserve scrolling */
+/* For very small screens, ensure proper sizing */
 @media (max-width: 480px) {
     body, html {
         overflow-x: hidden !important;
@@ -581,16 +422,117 @@ html.bc-assistant-open {
         height: auto !important;
         width: 100% !important;
     }
+    
+    .bc-assistant-wrapper .bc-assistant-window {
+        width: 90vw !important;
+        right: 0 !important;
+        left: auto !important;
+    }
+    
+    .bc-assistant-wrapper[data-position="bottom-left"] .bc-assistant-window {
+        right: auto !important;
+        left: 0 !important;
+    }
+    
+    /* Adjust position with Droplabs present */
+    .bc-assistant-wrapper[data-has-droplabs="true"] {
+        bottom: 150px !important;
+    }
 }
-/* Ensure high z-index but ONLY for our elements */
-.bc-assistant-container,
-.bc-assistant-bubble,
-.bc-assistant-window,
-.bc-assistant-voice-container {
-    z-index: 999999 !important;
+
+/* Portrait orientation specific fixes */
+@media (max-width: 767px) and (orientation: portrait) {
+    .bc-assistant-wrapper {
+        bottom: 120px !important;
+    }
+    
+    .bc-assistant-wrapper .bc-assistant-window {
+        height: 60vh !important;
+    }
 }
-/* Position BC Assistant elements in a non-conflicting position */
-.bc-position-bottom-right {
-    bottom: 150px !important; /* Position much higher to avoid conflicts */
-    right: 20px !important;
+
+/* Landscape orientation specific fixes */
+@media (max-width: 767px) and (orientation: landscape) {
+    .bc-assistant-wrapper {
+        bottom: 80px !important;
+        right: 20px !important;
+    }
+    
+    .bc-assistant-wrapper .bc-assistant-window {
+        height: 80vh !important;
+        bottom: 60px !important;
+    }
+}
+
+/* Theme variations */
+.bc-assistant-wrapper .bc-assistant-container.bc-assistant-light {
+    /* Light theme is default */
+}
+
+.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark {
+    color-scheme: dark;
+}
+
+.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-window {
+    background-color: #222;
+    color: #fff;
+}
+
+.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-messages {
+    background-color: #333;
+}
+
+.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-message-assistant .bc-message-content {
+    background-color: #444;
+    color: #fff;
+}
+
+.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-input-container {
+    background-color: #222;
+    border-top-color: #444;
+}
+
+.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-input {
+    background-color: #333;
+    border-color: #444;
+    color: #fff;
+}
+
+/* Accessibility improvements */
+.bc-assistant-wrapper .bc-assistant-bubble:focus,
+.bc-assistant-wrapper .bc-assistant-close:focus,
+.bc-assistant-wrapper .bc-assistant-minimize:focus,
+.bc-assistant-wrapper .bc-assistant-send:focus,
+.bc-assistant-wrapper .bc-assistant-input:focus {
+    outline: 2px solid #A67C52;
+    outline-offset: 2px;
+}
+
+.bc-assistant-wrapper .bc-assistant-bubble,
+.bc-assistant-wrapper .bc-assistant-close,
+.bc-assistant-wrapper .bc-assistant-minimize,
+.bc-assistant-wrapper .bc-assistant-send {
+    cursor: pointer;
+}
+
+/* Animation for transitions */
+.bc-assistant-wrapper .bc-assistant-window {
+    transition: opacity 0.3s ease;
+}
+
+.bc-assistant-wrapper .bc-assistant-window.bc-fade-in {
+    opacity: 0;
+    animation: bc-fade-in 0.3s forwards;
+}
+
+@keyframes bc-fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Print media query to hide assistant when printing */
+@media print {
+    .bc-assistant-wrapper {
+        display: none !important;
+    }
 }
