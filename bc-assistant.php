@@ -83,6 +83,16 @@ function bc_assistant_load_env() {
 }
 add_action('init', 'bc_assistant_load_env');
 
+add_action('init', function() {
+    $env_path = BC_ASSISTANT_PATH . '.env';
+    error_log('BC Assistant .env path: ' . $env_path);
+    error_log('File exists: ' . (file_exists($env_path) ? 'Yes' : 'No'));
+    error_log('File readable: ' . (is_readable($env_path) ? 'Yes' : 'No'));
+    if (file_exists($env_path) && is_readable($env_path)) {
+        error_log('First 10 bytes: ' . substr(file_get_contents($env_path), 0, 10));
+    }
+}, 5);
+
 /**
  * Main plugin class
  */

@@ -786,5 +786,60 @@ if (document.readyState === 'loading') {
 } else {
     fixScrollingIssues();
 }	
-	
+
+// Add scroll management functions
+$(document).ready(function() {
+    // Find the chat window and bubble
+    const chatWindow = document.querySelector('.bc-assistant-window');
+    const chatBubble = document.querySelector('.bc-assistant-bubble');
+    
+    if (!chatWindow || !chatBubble) return;
+    
+    // Track if the chat is open
+    let isChatOpen = false;
+    
+    // Add click handler to toggle body scroll class
+    chatBubble.addEventListener('click', function() {
+        isChatOpen = !isChatOpen;
+        
+        if (isChatOpen) {
+            document.body.classList.add('bc-assistant-open');
+            document.documentElement.classList.add('bc-assistant-open');
+        } else {
+            document.body.classList.remove('bc-assistant-open');
+            document.documentElement.classList.remove('bc-assistant-open');
+        }
+    });
+    
+    // Also add click handler to close button
+    const closeButton = chatWindow.querySelector('.bc-assistant-close');
+    if (closeButton) {
+        closeButton.addEventListener('click', function() {
+            document.body.classList.remove('bc-assistant-open');
+            document.documentElement.classList.remove('bc-assistant-open');
+            isChatOpen = false;
+        });
+    }
+    
+    // Fix for Droplabs duplicate icons - specifically targeting dl-bubble-tab-mobile
+    const hideDuplicateDroplabsIcons = function() {
+        // Hide duplicate mobile tab
+        const dlMobileTabs = document.querySelectorAll('a.dl-bubble-tab-mobile');
+        if (dlMobileTabs.length > 0) {
+            for (let i = 0; i < dlMobileTabs.length; i++) {
+                dlMobileTabs[i].style.display = 'none';
+                dlMobileTabs[i].style.visibility = 'hidden';
+                dlMobileTabs[i].style.opacity = '0';
+                dlMobileTabs[i].style.pointerEvents = 'none';
+                dlMobileTabs[i].style.position = 'absolute';
+                dlMobileTabs[i].style.left = '-9999px';
+            }
+        }
+    };
+    
+    // Run on page load and periodically
+    hideDuplicateDroplabsIcons();
+    setInterval(hideDuplicateDroplabsIcons, 1000);
+});
+
 })(jQuery); // Use the main jQuery instance instead of creating a new one
