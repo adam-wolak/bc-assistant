@@ -552,6 +552,24 @@
     
 })(jQuery);
 
+// Find the formatMessage function in script.js and replace it with this:
+
+// Format message content (simple markdown-like parsing)
+formatMessage(text) {
+    // Check if text is undefined or null
+    if (!text) {
+        console.warn('BC Assistant: Attempted to format undefined text');
+        return ''; // Return empty string if text is undefined
+    }
+    
+    return text
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+}
+
 // Ensure welcome message is properly initialized
 (function() {
     document.addEventListener('DOMContentLoaded', function() {

@@ -312,3 +312,213 @@ function bc_assistant_call_anthropic_api($message, $model, $api_key, $thread_id 
         'thread_id' => $thread_id
     );
 }
+
+/**
+ * Call OpenAI Assistants API
+ *
+ * @param string $message Message to send
+ * @param string $api_key API key
+ * @param string $assistant_id Assistant ID
+ * @param string|null $thread_id Thread ID (optional)
+ * @return array|WP_Error API response or error object
+ */
+function bc_assistant_call_openai_assistants_api($message, $api_key, $assistant_id, $thread_id = null) {
+    // If no thread_id, create a new thread
+    if (empty($thread_id)) {
+        // Create new thread
+        $thread_response = wp_remote_post(
+            'https://api.openai.com/v1/threads',
+            array(
+                'headers' => array(
+                    'Authorization' => 'Bearer ' . $api_key,
+                    'Content-Type' => 'application/json',
+                    'OpenAI-Beta' => 'assistants=v1'
+                ),
+                'body' => json_encode(array()),
+                'timeout' => 30
+            )
+        );
+        
+        // Handle errors
+        if (is_wp_error($thread_response)) {
+            BC_Assistant_Helper::log('Error creating thread: ' . $thread_response->get_error_message());
+            return $thread_response;
+        }
+        
+        // Get thread ID
+        $thread_data = json_decode(wp_remote_retrieve_body($thread_response), true);
+        if (!isset($thread_data['id'])) {
+            BC_Assistant_Helper::log('Invalid thread response: ' . wp_remote_retrieve_body($thread_response));
+            return new WP_Error('invalid_response', 'Invalid thread response');
+        }
+        
+        $thread_id = $thread_data['id'];
+        BC_Assistant_Helper::log('Created new thread: ' . $thread_id);
+    }
+    
+    // Add message to thread
+    $message_response = wp_remote_post(
+        'https://api.openai.com/v1/threads/' . $thread_id . '/messages',
+        array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'Content-Type' => 'application/json',
+                'OpenAI-Beta' => 'assistants=v1'
+            ),
+            'body' => json_encode(array(
+                'role' => 'user',
+                'content' => $message
+            )),
+            'timeout' => 30
+        )
+    );
+    
+    // Handle errors
+    if (is_wp_error($message_response)) {
+        BC_Assistant_Helper::log('Error adding message: ' . $message_response->get_error_message());
+        return $message_response;
+    }
+    
+    // Run assistant
+    $run_response = wp_remote_post(
+        'https://api.openai.com/v1/threads/' . $thread_id . '/runs',
+        array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'Content-Type' => 'application/json',
+                'OpenAI-Beta' => 'assistants=v1'
+            ),
+            'body' => json_encode(array(
+                'assistant_id' => $assistant_id
+            )),
+            'timeout' => 60
+        )
+    );
+    
+    // Handle errors
+    if (is_wp_error($run_response)) {
+        BC_Assistant_Helper::log('Error starting run: ' . $run_response->get_error_message());
+        return $run_response;
+    }
+    
+    // Get run ID
+    $run_data = json_decode(wp_remote_retrieve_body($run_response), true);
+    if (!isset($run_data['id'])) {
+        BC_Assistant_Helper::log('Invalid run response: ' . wp_remote_retrieve_body($run_response));
+        return new WP_Error('invalid_response', 'Invalid run response');
+    }
+    
+    $run_id = $run_data['id'];
+    BC_Assistant_Helper::log('Started run: ' . $run_id);
+    
+    // Wait for run to complete
+    $status = '';
+    $max_retries = 10;
+    $retry_count = 0;
+    
+    while ($retry_count < $max_retries) {
+        // Wait before checking status
+        sleep(1);
+        
+        // Get run status
+        $status_response = wp_remote_get(
+            'https://api.openai.com/v1/threads/' . $thread_id . '/runs/' . $run_id,
+            array(
+                'headers' => array(
+                    'Authorization' => 'Bearer ' . $api_key,
+                    'Content-Type' => 'application/json',
+                    'OpenAI-Beta' => 'assistants=v1'
+                ),
+                'timeout' => 30
+            )
+        );
+        
+        // Handle errors
+        if (is_wp_error($status_response)) {
+            BC_Assistant_Helper::log('Error checking run status: ' . $status_response->get_error_message());
+            return $status_response;
+        }
+        
+        // Get status
+        $status_data = json_decode(wp_remote_retrieve_body($status_response), true);
+        if (!isset($status_data['status'])) {
+            BC_Assistant_Helper::log('Invalid status response: ' . wp_remote_retrieve_body($status_response));
+            return new WP_Error('invalid_response', 'Invalid status response');
+        }
+        
+        $status = $status_data['status'];
+        BC_Assistant_Helper::log('Run status: ' . $status);
+        
+        // Check if run is complete
+        if ($status === 'completed') {
+            break;
+        } elseif ($status === 'failed' || $status === 'cancelled') {
+            BC_Assistant_Helper::log('Run failed or cancelled: ' . wp_remote_retrieve_body($status_response));
+            return new WP_Error('run_failed', 'Run failed or cancelled');
+        }
+        
+        $retry_count++;
+    }
+    
+    // If max retries exceeded, return error
+    if ($retry_count >= $max_retries) {
+        BC_Assistant_Helper::log('Run timed out');
+        return new WP_Error('run_timeout', 'Run timed out');
+    }
+    
+    // Get messages
+    $messages_response = wp_remote_get(
+        'https://api.openai.com/v1/threads/' . $thread_id . '/messages',
+        array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'Content-Type' => 'application/json',
+                'OpenAI-Beta' => 'assistants=v1'
+            ),
+            'timeout' => 30
+        )
+    );
+    
+    // Handle errors
+    if (is_wp_error($messages_response)) {
+        BC_Assistant_Helper::log('Error getting messages: ' . $messages_response->get_error_message());
+        return $messages_response;
+    }
+    
+    // Get messages
+    $messages_data = json_decode(wp_remote_retrieve_body($messages_response), true);
+    if (!isset($messages_data['data']) || !is_array($messages_data['data']) || empty($messages_data['data'])) {
+        BC_Assistant_Helper::log('Invalid messages response: ' . wp_remote_retrieve_body($messages_response));
+        return new WP_Error('invalid_response', 'Invalid messages response');
+    }
+    
+    // Find assistant's response (first message with role='assistant')
+    $assistant_message = null;
+    foreach ($messages_data['data'] as $msg) {
+        if ($msg['role'] === 'assistant') {
+            $assistant_message = $msg;
+            break;
+        }
+    }
+    
+    if (!$assistant_message) {
+        BC_Assistant_Helper::log('No assistant message found');
+        return new WP_Error('no_response', 'No assistant message found');
+    }
+    
+    // Extract text content
+    $content = '';
+    if (isset($assistant_message['content']) && is_array($assistant_message['content'])) {
+        foreach ($assistant_message['content'] as $content_part) {
+            if (isset($content_part['type']) && $content_part['type'] === 'text') {
+                $content .= $content_part['text']['value'];
+            }
+        }
+    }
+    
+    // Return response
+    return array(
+        'message' => $content,
+        'thread_id' => $thread_id
+    );
+}
