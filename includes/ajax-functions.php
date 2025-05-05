@@ -346,11 +346,11 @@ function bc_assistant_call_openai_assistants_api($message, $api_key, $assistant_
         }
         
         // Get thread ID
-        $thread_data = json_decode(wp_remote_retrieve_body($thread_response), true);
-        if (!isset($thread_data['id'])) {
-            BC_Assistant_Helper::log('Invalid thread response: ' . wp_remote_retrieve_body($thread_response));
-            return new WP_Error('invalid_response', 'Invalid thread response');
-        }
+$thread_data = json_decode(wp_remote_retrieve_body($thread_response), true);
+if (empty($thread_data) || !isset($thread_data['id'])) {
+    BC_Assistant_Helper::log('Invalid thread response: ' . wp_remote_retrieve_body($thread_response));
+    return new WP_Error('invalid_response', 'Invalid thread response: ' . wp_remote_retrieve_body($thread_response));
+}
         
         $thread_id = $thread_data['id'];
         BC_Assistant_Helper::log('Created new thread: ' . $thread_id);
