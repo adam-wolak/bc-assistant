@@ -290,10 +290,10 @@ $available_models = BC_Assistant_Config::get_available_models();
             </table>
         <?php elseif ($active_tab == 'debug') : ?>
             <!-- Zakładka Diagnostyka -->
-            <p>
-                <a href="<?php echo admin_url('admin.php?page=bc-assistant-diagnostic'); ?>" class="button button-secondary">Otwórz narzędzie diagnostyczne</a>
-                <span class="description" style="margin-left: 10px;">Użyj narzędzia diagnostycznego, aby zbadać problemy z zapisywaniem modelu.</span>
-            </p>
+        <p>
+           <a href="<?php echo admin_url('admin.php?page=bc-assistant-diagnostic'); ?>" class="button button-secondary">Otwórz narzędzie diagnostyczne</a>
+           <span class="description" style="margin-left: 10px;">Użyj narzędzia diagnostycznego, aby zbadać problemy z wtyczką.</span>
+        </p>
         <?php endif; ?>
 
         <input type="hidden" name="bc_assistant_save_settings" value="1" />
