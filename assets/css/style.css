@@ -587,19 +587,71 @@ html.bc-assistant-open {
     bottom: 120px !important; /* Move higher when conflicts exist */
 }
 
-/* Mobile specific adjustments */
+/* Mobile styles */
 @media (max-width: 767px) {
-    .bc-assistant-wrapper.bc-position-bottom-right,
-    .bc-assistant-wrapper.bc-position-bottom-left {
-        bottom: 100px !important; /* Higher position on mobile by default */
-        right: 20px !important;
-        left: auto !important;
+    /* Forceful mobile positioning and visibility */
+    .bc-assistant-wrapper {
+        position: fixed !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        z-index: 9999999 !important; /* Even higher z-index for mobile */
     }
     
-    /* When conflicts exist, move even higher */
-    .bc-assistant-wrapper.bc-adjust-position.bc-position-bottom-right,
-    .bc-assistant-wrapper.bc-adjust-position.bc-position-bottom-left {
-        bottom: 170px !important;
+    /* Default position on mobile - apply to all position classes for consistency */
+    .bc-assistant-wrapper,
+    .bc-assistant-wrapper.bc-position-bottom-right,
+    .bc-assistant-wrapper.bc-position-bottom-left,
+    .bc-assistant-wrapper.bc-position-top-right,
+    .bc-assistant-wrapper.bc-position-top-left {
+        bottom: 100px !important; /* Higher position on mobile */
+        right: 20px !important;
+        left: auto !important;
+        top: auto !important;
+    }
+    
+    /* Position adjustment when conflicts detected */
+    .bc-assistant-wrapper.bc-adjust-position,
+    .bc-assistant-wrapper.bc-position-bottom-right.bc-adjust-position,
+    .bc-assistant-wrapper.bc-position-bottom-left.bc-adjust-position {
+        bottom: 170px !important; /* Move even higher when conflicts exist */
+    }
+    
+    /* Ensure bubble is visible */
+    .bc-assistant-wrapper .bc-assistant-bubble {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 20px !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* Window sizing for mobile */
+    .bc-assistant-wrapper .bc-assistant-window {
+        width: 85vw !important;
+        max-width: 350px !important;
+        height: 70vh !important;
+        max-height: 500px !important;
+        right: 0 !important;
+    }
+    
+    /* Ensure messages fit mobile screen better */
+    .bc-assistant-wrapper .bc-message {
+        max-width: 90% !important;
+    }
+    
+    /* Better tap target and readability */
+    .bc-assistant-wrapper .bc-assistant-input {
+        font-size: 16px !important; /* Better size for touch devices */
+        min-height: 44px !important; /* Better tap target */
+    }
+    
+    .bc-assistant-wrapper .bc-assistant-send {
+        width: 44px !important;
+        height: 44px !important;
     }
 }
 
