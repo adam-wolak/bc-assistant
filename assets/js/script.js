@@ -5,6 +5,16 @@
 
 (function($) {
     "use strict";
+	
+// Create a dedicated namespace for BC Assistant to avoid global conflicts
+window.BCAssistantNamespace = window.BCAssistantNamespace || {};
+
+// Store previous global handlers to avoid overriding them
+window.BCAssistantNamespace.originalHandlers = {
+    scroll: window.onscroll,
+    resize: window.onresize,
+    click: window.onclick
+};
     
     // Configuration object - will be populated from WordPress data
     const bcConfig = window.bcAssistantData || {
@@ -583,19 +593,31 @@ formatMessage(text) {
     
 })(jQuery);
 
+// New event handler to prevent propagation issues
+document.addEventListener('DOMContentLoaded', function(e) {
+    // Initialize BC Assistant safely
+    if (typeof initBCAssistant === 'function') {
+        initBCAssistant();
+    }
+    
+    // Ensure events don't propagate beyond what's needed
+    document.querySelectorAll('.bc-assistant-wrapper, .bc-assistant-bubble, .bc-assistant-window')
+        .forEach(function(el) {
+            el.addEventListener('touchmove', function(e) {
+                e.stopPropagation();
+            }, { passive: true });
+        });
+}, { passive: true });
 
 (function() {
     document.addEventListener('DOMContentLoaded', function() {
-
         console.log('BC Assistant: Checking welcome message initialization');
         
-
         if (typeof window.bcAssistantWelcomeMessage === 'undefined' || !window.bcAssistantWelcomeMessage) {
             console.warn('BC Assistant: Welcome message not found in global scope, setting default');
             window.bcAssistantWelcomeMessage = 'Witaj! W czym mogę pomóc?';
         }
         
-
         if (typeof window.bcAssistantData === 'undefined' || !window.bcAssistantData.welcomeMessage) {
             console.warn('BC Assistant: welcomeMessage not found in bcAssistantData, using global welcome message');
             if (window.bcAssistantData) {

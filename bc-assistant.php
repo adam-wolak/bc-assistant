@@ -304,38 +304,30 @@ public function __construct() {
 public function render_chat() {
     static $already_rendered = false;
     
-    if ($already_rendered) {
-        return; // Only render once per page load
-    }
-    
-    $already_rendered = true; // Mark as rendered
-    // Get configuration
-    $config = BC_Assistant_Config::get_all();
-    
-    // Skip if display mode is not bubble
-    if ($config['display_mode'] !== 'bubble') {
+    // Prevent multiple renderings
+    if ($already_rendered || BC_Assistant_Config::get('display_mode') !== 'bubble') {
         return;
     }
     
-    // Make sure all required config variables are set with defaults
-    if (!isset($config['theme'])) {
-        $config['theme'] = 'light';
-    }
+    // Add a safeguard in JavaScript too
+    echo '<script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // If multiple wrappers exist, remove duplicates
+            var wrappers = document.querySelectorAll(".bc-assistant-wrapper");
+            if (wrappers.length > 1) {
+                console.log("BC Assistant: Found " + wrappers.length + " instances, removing duplicates");
+                for (var i = 1; i < wrappers.length; i++) {
+                    wrappers[i].parentNode.removeChild(wrappers[i]);
+                }
+            }
+        });
+    </script>';
     
-    if (!isset($config['bubble_position'])) {
-        $config['bubble_position'] = 'bottom-right';
-    }
-    
-    if (!isset($config['bubble_icon'])) {
-        $config['bubble_icon'] = 'chat';
-    }
-    
-    if (!isset($config['button_text'])) {
-        $config['button_text'] = 'Zapytaj asystenta';
-    }
-    
-    // Include the template
+    // Get configuration and include the template
+    $config = BC_Assistant_Config::get_all();
     include BC_ASSISTANT_PATH . 'templates/assistant-wrapper.php';
+    
+    $already_rendered = true;
 }
     
     /**

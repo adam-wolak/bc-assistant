@@ -681,3 +681,43 @@ html.bc-assistant-open {
 .bc-assistant-wrapper.bc-adjust-position .bc-assistant-bubble {
     border: 2px solid #fff; /* Subtle visual indicator that position was adjusted */
 }
+
+/* Prevent interference with page scrolling */
+html.bc-assistant-open, 
+body.bc-assistant-open {
+    overflow: auto !important;
+    height: auto !important;
+    position: static !important;
+}
+
+/* Isolate the assistant from affecting other elements */
+.bc-assistant-wrapper {
+    isolation: isolate;
+    contain: content;
+}
+
+/* Fix scrolling on mobile */
+@media (max-width: 767px) {
+    /* Ensure the page can scroll normally */
+    html, body {
+        overflow-y: auto !important;
+        height: auto !important;
+        overscroll-behavior-y: auto !important;
+    }
+    
+    /* Prevent event bubbling that might interfere with third-party scripts */
+    .bc-assistant-wrapper {
+        pointer-events: auto;
+        touch-action: none;
+    }
+    
+    /* Only enable touch actions on elements that need them */
+    .bc-assistant-bubble {
+        touch-action: manipulation;
+        pointer-events: auto;
+    }
+    
+    .bc-assistant-window {
+        touch-action: auto;
+    }
+}
