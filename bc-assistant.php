@@ -233,50 +233,62 @@ public function __construct() {
     /**
      * Enqueue front-end styles and scripts
      */
-    public function enqueue_assets() {
-        // Load Font Awesome if needed
-        wp_enqueue_style(
-            'font-awesome',
-            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-            array(),
-            '5.15.4'
-        );
-        
-        // Enqueue main styles
-        wp_enqueue_style(
-            'bc-assistant-style',
-            BC_ASSISTANT_URL . 'assets/css/style.css',
-            array(),
-            BC_ASSISTANT_VERSION . '.' . time() // Add timestamp to force refresh
-        );
-        
-        // Enqueue fixed main script
-        wp_enqueue_script(
-            'bc-assistant-script',
-            BC_ASSISTANT_URL . 'assets/js/script.js',
-            array('jquery'),
-            BC_ASSISTANT_VERSION . '.' . time(), // Add timestamp to force refresh
-            true
-        );
-        
-        // Get configuration
-        $config = BC_Assistant_Config::get_all();
-        
-        // Pass data to script
-        wp_localize_script('bc-assistant-script', 'bcAssistantData', array(
-            'model' => $config['model'],
-            'position' => isset($config['bubble_position']) ? $config['bubble_position'] : 'bottom-right',
-            'title' => 'Asystent Bielsko Clinic',
-            'welcomeMessage' => $config['welcome_message_default'],
-            'apiEndpoint' => admin_url('admin-ajax.php'),
-            'action' => 'bc_assistant_send_message',
-            'nonce' => wp_create_nonce('bc_assistant_nonce'),
-            'debug' => defined('WP_DEBUG') && WP_DEBUG,
-            'displayMode' => $config['display_mode'],
-            'theme' => $config['theme'],
-            'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
-        ));
-    }
+/**
+ * Enqueue front-end styles and scripts
+ */
+public function enqueue_assets() {
+    // Load Font Awesome if needed
+    wp_enqueue_style(
+        'font-awesome',
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+        array(),
+        '5.15.4'
+    );
+    
+    // Enqueue main styles
+    wp_enqueue_style(
+        'bc-assistant-style',
+        BC_ASSISTANT_URL . 'assets/css/style.css',
+        array(),
+        BC_ASSISTANT_VERSION . '.' . time() // Add timestamp to force refresh
+    );
+    
+    // Enqueue fixed main script
+    wp_enqueue_script(
+        'bc-assistant-script',
+        BC_ASSISTANT_URL . 'assets/js/script.js',
+        array('jquery'),
+        BC_ASSISTANT_VERSION . '.' . time(), // Add timestamp to force refresh
+        true
+    );
+    
+    // ADD THIS NEW CODE: Enqueue emergency fix script
+    wp_enqueue_script(
+        'bc-assistant-emergency-fix',
+        BC_ASSISTANT_URL . 'assets/js/emergency-fix.js',
+        array('jquery', 'bc-assistant-script'),
+        BC_ASSISTANT_VERSION . '.' . time(),
+        true
+    );
+    
+    // Get configuration
+    $config = BC_Assistant_Config::get_all();
+    
+    // Pass data to script
+    wp_localize_script('bc-assistant-script', 'bcAssistantData', array(
+        'model' => $config['model'],
+        'position' => isset($config['bubble_position']) ? $config['bubble_position'] : 'bottom-right',
+        'title' => 'Asystent Bielsko Clinic',
+        'welcomeMessage' => $config['welcome_message_default'],
+        'apiEndpoint' => admin_url('admin-ajax.php'),
+        'action' => 'bc_assistant_send_message',
+        'nonce' => wp_create_nonce('bc_assistant_nonce'),
+        'debug' => defined('WP_DEBUG') && WP_DEBUG,
+        'displayMode' => $config['display_mode'],
+        'theme' => $config['theme'],
+        'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
+    ));
+}
 
     /**
      * Enqueue admin styles and scripts
@@ -451,14 +463,5 @@ function bc_assistant_defer_scripts($tag, $handle, $src) {
     
     return $tag;
 }
-
-// Enqueue emergency fix script - add this HERE
-wp_enqueue_script(
-    'bc-assistant-emergency-fix',
-    BC_ASSISTANT_URL . 'assets/js/emergency-fix.js',
-    array('jquery', 'bc-assistant-script'),
-    BC_ASSISTANT_VERSION . '.' . time(),
-    true
-);
 
 add_filter('script_loader_tag', 'bc_assistant_defer_scripts', 10, 3);
