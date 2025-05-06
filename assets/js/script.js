@@ -1,20 +1,13 @@
 /**
- * BC Assistant - Fixed Mobile Implementation
- * This script resolves conflicts with Droplabs and ensures reliable mobile display
+ * BC Assistant - Mobile & Cross-Browser Fix
+ * Self-contained solution that doesn't depend on other plugins
  */
 
 (function($) {
     "use strict";
-	
-// Create a dedicated namespace for BC Assistant to avoid global conflicts
-window.BCAssistantNamespace = window.BCAssistantNamespace || {};
-
-// Store previous global handlers to avoid overriding them
-window.BCAssistantNamespace.originalHandlers = {
-    scroll: window.onscroll,
-    resize: window.onresize,
-    click: window.onclick
-};
+    
+    // Store a single instance reference
+    let bcAssistantInstance = null;
     
     // Configuration object - will be populated from WordPress data
     const bcConfig = window.bcAssistantData || {
@@ -29,38 +22,6 @@ window.BCAssistantNamespace.originalHandlers = {
     
     // Main BC Assistant class
     class BCAssistant {
-		
-init() {
-    // Create the DOM elements
-    this.createDOM();
-    
-    // Add event listeners
-    this.setupEvents();
-    
-    // Get welcome message from config or global variable or default
-    let welcomeMessage = this.config.welcomeMessage;
-    
-    // If not in config, try global variable
-    if (!welcomeMessage && typeof window.bcAssistantWelcomeMessage !== 'undefined') {
-        welcomeMessage = window.bcAssistantWelcomeMessage;
-    }
-    
-    // If still not found, use default
-    if (!welcomeMessage) {
-        welcomeMessage = 'Witaj! W czym mogę pomóc?';
-        console.warn('BC Assistant: Using default welcome message');
-    }
-    
-    // Add welcome message
-    this.addMessage('assistant', welcomeMessage);
-    
-    // Apply fixes for potential conflicts
-    this.applyFixes();
-    
-    // Set up periodic visibility check
-    setInterval(() => this.ensureVisibility(), 2000);
-}
-
         constructor(config) {
             // Store configuration
             this.config = config;
@@ -70,7 +31,7 @@ init() {
             this.threadId = localStorage.getItem('bc_assistant_thread_id') || '';
             this.isMobile = this.checkIfMobile();
             
-            // Initialize the assistant
+            // Initialize only once
             this.init();
             
             // Log initialization for debugging
@@ -88,17 +49,27 @@ init() {
         
         // Initialize the assistant
         init() {
-            // Create the DOM elements
             this.createDOM();
-            
-            // Add event listeners
             this.setupEvents();
             
-            // Add initial welcome message
-            this.addMessage('assistant', this.config.initialMessage);
+            // Get welcome message from config or global variable or default
+            let welcomeMessage = this.config.welcomeMessage;
             
-            // Apply fixes for potential conflicts
-            this.applyFixes();
+            // If not in config, try global variable
+            if (!welcomeMessage && typeof window.bcAssistantWelcomeMessage !== 'undefined') {
+                welcomeMessage = window.bcAssistantWelcomeMessage;
+            }
+            
+            // If still not found, use default
+            if (!welcomeMessage) {
+                welcomeMessage = 'Witaj! W czym mogę pomóc?';
+            }
+            
+            // Add welcome message
+            this.addMessage('assistant', welcomeMessage);
+            
+            // Apply fixes for display issues
+            this.fixDisplay();
             
             // Set up periodic visibility check
             setInterval(() => this.ensureVisibility(), 2000);
@@ -106,7 +77,7 @@ init() {
         
         // Create all DOM elements
         createDOM() {
-            // Create wrapper (highest level container)
+            // Create wrapper
             this.wrapper = document.createElement('div');
             this.wrapper.className = 'bc-assistant-wrapper';
             this.wrapper.setAttribute('data-position', this.config.position);
@@ -114,6 +85,11 @@ init() {
             // Create main container
             this.container = document.createElement('div');
             this.container.className = 'bc-assistant-container';
+            
+            // Add theme class if specified
+            if (this.config.theme) {
+                this.container.classList.add('bc-assistant-' + this.config.theme);
+            }
             
             // Create chat bubble
             this.bubble = document.createElement('div');
@@ -130,10 +106,10 @@ init() {
             header.innerHTML = `
                 <div class="bc-assistant-title">${this.config.title}</div>
                 <div class="bc-assistant-controls">
-                    <button class="bc-assistant-minimize" title="Zminimalizuj">
+                    <button class="bc-assistant-minimize" type="button" title="Zminimalizuj">
                         <i class="fas fa-minus"></i>
                     </button>
-                    <button class="bc-assistant-close" title="Zamknij">
+                    <button class="bc-assistant-close" type="button" title="Zamknij">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -148,7 +124,7 @@ init() {
             inputContainer.className = 'bc-assistant-input-container';
             inputContainer.innerHTML = `
                 <textarea class="bc-assistant-input" placeholder="Wpisz swoje pytanie..."></textarea>
-                <button class="bc-assistant-send" title="Wyślij">
+                <button class="bc-assistant-send" type="button" title="Wyślij">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             `;
@@ -174,32 +150,37 @@ init() {
         
         // Set up all event listeners
         setupEvents() {
-            // Bubble click - toggle chat window
-            this.bubble.addEventListener('click', () => this.toggleWindow());
+            // Use direct handler methods with bound context to avoid issues
+            // Bubble handlers
+            this.bubbleClickHandler = this.handleBubbleClick.bind(this);
+            this.bubble.addEventListener('click', this.bubbleClickHandler);
+            this.bubble.addEventListener('touchend', this.bubbleClickHandler);
             
-            // Close button
+            // Close button handlers
+            this.closeButtonHandler = this.handleCloseClick.bind(this);
             if (this.closeButton) {
-                this.closeButton.addEventListener('click', () => this.closeWindow());
+                this.closeButton.addEventListener('click', this.closeButtonHandler);
+                this.closeButton.addEventListener('touchend', this.closeButtonHandler);
             }
             
-            // Minimize button
+            // Minimize button handlers
+            this.minimizeButtonHandler = this.handleMinimizeClick.bind(this);
             if (this.minimizeButton) {
-                this.minimizeButton.addEventListener('click', () => this.closeWindow());
+                this.minimizeButton.addEventListener('click', this.minimizeButtonHandler);
+                this.minimizeButton.addEventListener('touchend', this.minimizeButtonHandler);
             }
             
-            // Send button
+            // Send button handlers
+            this.sendButtonHandler = this.handleSendClick.bind(this);
             if (this.sendButton) {
-                this.sendButton.addEventListener('click', () => this.sendMessage());
+                this.sendButton.addEventListener('click', this.sendButtonHandler);
+                this.sendButton.addEventListener('touchend', this.sendButtonHandler);
             }
             
             // Input field - handle Enter key
+            this.inputKeyHandler = this.handleInputKeyDown.bind(this);
             if (this.inputField) {
-                this.inputField.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        this.sendMessage();
-                    }
-                });
+                this.inputField.addEventListener('keydown', this.inputKeyHandler);
                 
                 // Auto-resize textarea
                 this.inputField.addEventListener('input', function() {
@@ -209,10 +190,75 @@ init() {
             }
             
             // Window resize event
-            window.addEventListener('resize', () => {
-                this.isMobile = this.checkIfMobile();
-                this.applyFixes();
-            });
+            this.resizeHandler = this.handleWindowResize.bind(this);
+            window.addEventListener('resize', this.resizeHandler);
+            
+            // Stop propagation for all events inside the wrapper
+            this.wrapperClickHandler = this.handleWrapperClick.bind(this);
+            this.wrapper.addEventListener('click', this.wrapperClickHandler, true);
+            this.wrapper.addEventListener('touchstart', this.wrapperClickHandler, { passive: false, capture: true });
+            this.wrapper.addEventListener('touchmove', this.handleWrapperTouchMove.bind(this), { passive: false, capture: true });
+        }
+        
+        // Event handler methods
+        handleBubbleClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.toggleWindow();
+            return false;
+        }
+        
+        handleCloseClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.closeWindow();
+            return false;
+        }
+        
+        handleMinimizeClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.closeWindow();
+            return false;
+        }
+        
+        handleSendClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.sendMessage();
+            return false;
+        }
+        
+        handleInputKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+                return false;
+            }
+        }
+        
+        handleWindowResize() {
+            this.isMobile = this.checkIfMobile();
+            this.fixDisplay();
+        }
+        
+        handleWrapperClick(e) {
+            // Only stop propagation for clicks inside our components
+            if (e.target.closest('.bc-assistant-bubble, .bc-assistant-window')) {
+                e.stopPropagation();
+            }
+        }
+        
+        handleWrapperTouchMove(e) {
+            // Prevent touch events from affecting page scrolling
+            if (e.target.closest('.bc-assistant-messages')) {
+                // Allow scrolling within messages container
+                e.stopPropagation();
+            } else if (e.target.closest('.bc-assistant-bubble, .bc-assistant-window')) {
+                // Prevent for other components
+                e.preventDefault();
+                e.stopPropagation();
+            }
         }
         
         // Toggle chat window visibility
@@ -227,7 +273,12 @@ init() {
         // Open chat window
         openWindow() {
             this.isOpen = true;
-            this.window.style.display = 'flex';
+            
+            // Force display style with !important equivalent
+            // Set the style properties directly rather than using style.display
+            this.window.style.setProperty('display', 'flex', 'important');
+            this.window.style.setProperty('opacity', '1', 'important');
+            this.window.style.setProperty('visibility', 'visible', 'important');
             
             // Focus input field
             if (this.inputField) {
@@ -236,20 +287,12 @@ init() {
             
             // Scroll to latest message
             this.scrollToBottom();
-            
-            // Add class to document body to fix scrolling issues
-            document.body.classList.add('bc-assistant-open');
-            document.documentElement.classList.add('bc-assistant-open');
         }
         
         // Close chat window
         closeWindow() {
             this.isOpen = false;
-            this.window.style.display = 'none';
-            
-            // Remove body class
-            document.body.classList.remove('bc-assistant-open');
-            document.documentElement.classList.remove('bc-assistant-open');
+            this.window.style.setProperty('display', 'none', 'important');
         }
         
         // Add a message to the chat
@@ -257,7 +300,7 @@ init() {
             // Create message object
             const message = {
                 role,
-                content,
+                content: content || '',
                 timestamp: new Date()
             };
             
@@ -271,7 +314,7 @@ init() {
             // Create message content element
             const contentElem = document.createElement('div');
             contentElem.className = 'bc-message-content';
-            contentElem.innerHTML = this.formatMessage(content);
+            contentElem.innerHTML = this.formatMessage(content || '');
             
             // Add timestamp
             const timestamp = document.createElement('div');
@@ -289,20 +332,17 @@ init() {
             this.scrollToBottom();
         }
         
-formatMessage(text) {
-    // Check if text is undefined or null
-    if (!text) {
-        console.warn('BC Assistant: Attempted to format undefined text');
-        return ''; // Return empty string if text is undefined
-    }
-    
-    return text
-        .replace(/\n/g, '<br>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-}
+        // Format message with markdown
+        formatMessage(text) {
+            if (!text) return '';
+            
+            return text
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+        }
         
         // Format timestamp
         formatTime(date) {
@@ -423,161 +463,236 @@ formatMessage(text) {
             }
         }
         
-        // Apply fixes for known issues and conflicts
-        applyFixes() {
-            // Fix for conflict with Droplabs
-            this.fixPositioning();
-            
-            // Fix z-index issues
-            this.fixZIndex();
-            
-            // Fix mobile-specific issues
-            if (this.isMobile) {
-                this.fixMobileDisplay();
-            }
-        }
-        
-        // Fix positioning based on device and conflicts
-        fixPositioning() {
-            // Apply position based on config
-            const position = this.config.position || 'bottom-right';
-            
-            // Set position-specific styles
-            if (position === 'bottom-right') {
-                Object.assign(this.wrapper.style, {
-                    bottom: this.isMobile ? '100px' : '20px',
-                    right: '20px',
-                    left: 'auto',
-                    top: 'auto'
-                });
-            } else if (position === 'bottom-left') {
-                Object.assign(this.wrapper.style, {
-                    bottom: this.isMobile ? '100px' : '20px',
-                    left: '20px', 
-                    right: 'auto',
-                    top: 'auto'
-                });
-            } else if (position === 'top-right') {
-                Object.assign(this.wrapper.style, {
-                    top: '20px',
-                    right: '20px',
-                    bottom: 'auto',
-                    left: 'auto'
-                });
-            } else if (position === 'top-left') {
-                Object.assign(this.wrapper.style, {
-                    top: '20px',
-                    left: '20px',
-                    bottom: 'auto',
-                    right: 'auto'
-                });
-            }
-            
-            // Check for Droplabs presence
-            const hasDroplabs = this.detectDroplabs();
-            
-            if (hasDroplabs && position.includes('bottom')) {
-                // Move higher to avoid conflict with Droplabs
-                this.wrapper.style.bottom = '150px';
-            }
-        }
-        
-        // Detect if Droplabs is present on the page
-        detectDroplabs() {
-            const droplabsElements = document.querySelectorAll(
-                '.droplabs-container, .droplabs-widget, .droplabs-bubble, [id*="droplabs"]'
-            );
-            return droplabsElements.length > 0;
-        }
-        
-        // Fix z-index issues
-        fixZIndex() {
-            // Ensure high z-index for all components
+        // Fix all display issues - combined solutions for all browsers
+        fixDisplay() {
+            // Set high z-index for all components
             const highZIndex = '9999999';
             
-            this.wrapper.style.zIndex = highZIndex;
+            this.wrapper.style.setProperty('z-index', highZIndex, 'important');
+            this.wrapper.style.setProperty('position', 'fixed', 'important');
+            this.wrapper.style.setProperty('display', 'block', 'important');
+            this.wrapper.style.setProperty('visibility', 'visible', 'important');
+            this.wrapper.style.setProperty('opacity', '1', 'important');
+            this.wrapper.style.setProperty('pointer-events', 'auto', 'important');
             
-            if (this.container) {
-                this.container.style.zIndex = highZIndex;
+            // Apply position based on configuration
+            const position = this.config.position || 'bottom-right';
+            
+            // Apply position
+            if (position === 'bottom-right') {
+                this.wrapper.style.setProperty('bottom', this.isMobile ? '100px' : '20px', 'important');
+                this.wrapper.style.setProperty('right', '20px', 'important');
+                this.wrapper.style.setProperty('left', 'auto', 'important');
+                this.wrapper.style.setProperty('top', 'auto', 'important');
+            } else if (position === 'bottom-left') {
+                this.wrapper.style.setProperty('bottom', this.isMobile ? '100px' : '20px', 'important');
+                this.wrapper.style.setProperty('left', '20px', 'important');
+                this.wrapper.style.setProperty('right', 'auto', 'important');
+                this.wrapper.style.setProperty('top', 'auto', 'important');
+            } else if (position === 'top-right') {
+                this.wrapper.style.setProperty('top', '20px', 'important');
+                this.wrapper.style.setProperty('right', '20px', 'important');
+                this.wrapper.style.setProperty('bottom', 'auto', 'important');
+                this.wrapper.style.setProperty('left', 'auto', 'important');
+            } else if (position === 'top-left') {
+                this.wrapper.style.setProperty('top', '20px', 'important');
+                this.wrapper.style.setProperty('left', '20px', 'important');
+                this.wrapper.style.setProperty('bottom', 'auto', 'important');
+                this.wrapper.style.setProperty('right', 'auto', 'important');
             }
             
+            // Fix bubble display
             if (this.bubble) {
-                this.bubble.style.zIndex = highZIndex;
+                this.bubble.style.setProperty('display', 'flex', 'important');
+                this.bubble.style.setProperty('visibility', 'visible', 'important');
+                this.bubble.style.setProperty('opacity', '1', 'important');
+                this.bubble.style.setProperty('align-items', 'center', 'important');
+                this.bubble.style.setProperty('justify-content', 'center', 'important');
+                this.bubble.style.setProperty('z-index', highZIndex, 'important');
+                this.bubble.style.setProperty('cursor', 'pointer', 'important');
+                
+                if (this.isMobile) {
+                    this.bubble.style.setProperty('width', '50px', 'important');
+                    this.bubble.style.setProperty('height', '50px', 'important');
+                    this.bubble.style.setProperty('font-size', '20px', 'important');
+                }
             }
             
+            // Set window styles based on position
             if (this.window) {
-                this.window.style.zIndex = highZIndex;
+                this.window.style.setProperty('z-index', highZIndex, 'important');
+                
+                // Default window positioning
+                if (position.includes('right')) {
+                    this.window.style.setProperty('right', '0', 'important');
+                    this.window.style.setProperty('left', 'auto', 'important');
+                } else {
+                    this.window.style.setProperty('left', '0', 'important');
+                    this.window.style.setProperty('right', 'auto', 'important');
+                }
+                
+                if (position.includes('top')) {
+                    this.window.style.setProperty('top', '70px', 'important');
+                    this.window.style.setProperty('bottom', 'auto', 'important');
+                } else {
+                    this.window.style.setProperty('bottom', '70px', 'important');
+                    this.window.style.setProperty('top', 'auto', 'important');
+                }
+                
+                // Mobile adjustments
+                if (this.isMobile) {
+                    this.window.style.setProperty('width', '85vw', 'important');
+                    this.window.style.setProperty('max-width', '350px', 'important');
+                    this.window.style.setProperty('height', '70vh', 'important');
+                }
             }
+            
+            // Browser-specific fixes
+            this.applyBrowserSpecificFixes();
         }
         
-        // Fix mobile-specific display issues
-        fixMobileDisplay() {
-            // Ensure bubble is properly sized and visible
-            if (this.bubble) {
-                Object.assign(this.bubble.style, {
-                    width: '50px',
-                    height: '50px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    visibility: 'visible',
-                    opacity: '1'
-                });
-            }
+        // Apply browser-specific fixes
+        applyBrowserSpecificFixes() {
+            const isFirefox = navigator.userAgent.indexOf('Firefox') !== -1;
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
             
-            // Adjust window size for mobile
-            if (this.window) {
-                Object.assign(this.window.style, {
-                    width: '85%',
-                    height: '70vh',
-                    maxWidth: '350px'
-                });
-            }
-            
-            // Firefox-specific fixes
-            if (navigator.userAgent.indexOf('Firefox') !== -1) {
+            if (isFirefox) {
+                // Firefox-specific fixes
                 if (this.wrapper) {
-                    Object.assign(this.wrapper.style, {
-                        minWidth: '50px',
-                        minHeight: '50px',
-                        clipPath: 'none',
-                        transform: 'none',
-                        pointerEvents: 'auto'
-                    });
+                    this.wrapper.style.setProperty('min-width', '50px', 'important');
+                    this.wrapper.style.setProperty('min-height', '50px', 'important');
+                    this.wrapper.style.setProperty('clip-path', 'none', 'important');
+                    this.wrapper.style.setProperty('transform', 'none', 'important');
+                }
+                
+                if (this.bubble) {
+                    this.bubble.style.setProperty('transform', 'none', 'important');
+                    this.bubble.style.setProperty('clip-path', 'none', 'important');
+                    
+                    // Add extra tap area for Firefox mobile
+                    if (this.isMobile) {
+                        const tapArea = document.createElement('div');
+                        tapArea.style.setProperty('position', 'absolute', 'important');
+                        tapArea.style.setProperty('width', '70px', 'important');
+                        tapArea.style.setProperty('height', '70px', 'important');
+                        tapArea.style.setProperty('top', '-10px', 'important');
+                        tapArea.style.setProperty('left', '-10px', 'important');
+                        tapArea.style.setProperty('right', '-10px', 'important');
+                        tapArea.style.setProperty('bottom', '-10px', 'important');
+                        tapArea.style.setProperty('z-index', '1', 'important');
+                        
+                        // Ensure bubble has position relative
+                        this.bubble.style.setProperty('position', 'relative', 'important');
+                        
+                        // Only add if not already present
+                        if (!this.bubble.querySelector('.bc-tap-area')) {
+                            tapArea.className = 'bc-tap-area';
+                            this.bubble.appendChild(tapArea);
+                            
+                            // Add event listeners to the tap area
+                            tapArea.addEventListener('click', this.bubbleClickHandler);
+                            tapArea.addEventListener('touchend', this.bubbleClickHandler);
+                        }
+                    }
+                }
+            }
+            
+            if (isSafari || isIOS) {
+                // Safari and iOS fixes
+                if (this.wrapper) {
+                    this.wrapper.style.setProperty('-webkit-tap-highlight-color', 'rgba(0,0,0,0)', 'important');
+                    this.wrapper.style.setProperty('touch-action', 'auto', 'important');
+                }
+                
+                if (this.bubble) {
+                    this.bubble.style.setProperty('-webkit-user-select', 'none', 'important');
+                    this.bubble.style.setProperty('user-select', 'none', 'important');
+                }
+                
+                // Add specific touch handling for iOS
+                if (isIOS && this.bubble) {
+                    // Replace all event listeners with iOS-specific ones
+                    this.bubble.removeEventListener('click', this.bubbleClickHandler);
+                    this.bubble.removeEventListener('touchend', this.bubbleClickHandler);
+                    
+                    // iOS-specific handler
+                    const iosTouchHandler = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setTimeout(() => this.toggleWindow(), 10);
+                        return false;
+                    };
+                    
+                    this.bubble.addEventListener('touchstart', iosTouchHandler, { passive: false });
+                }
+            }
+            
+            // Apply Edge-specific fixes
+            if (/Edge/.test(navigator.userAgent)) {
+                if (this.wrapper) {
+                    this.wrapper.style.setProperty('transform', 'translateZ(0)', 'important');
+                }
+                
+                if (this.bubble) {
+                    this.bubble.style.setProperty('transform', 'translateZ(0)', 'important');
                 }
             }
         }
         
         // Ensure visibility (called periodically)
         ensureVisibility() {
-            if (this.wrapper) {
-                this.wrapper.style.display = 'block';
-                this.wrapper.style.visibility = 'visible';
-                this.wrapper.style.opacity = '1';
-                
-                // Force all child elements to be visible too
-                if (this.bubble) {
-                    this.bubble.style.display = 'flex';
-                    this.bubble.style.visibility = 'visible';
-                    this.bubble.style.opacity = '1';
-                }
-                
-                // Only make window visible if it's supposed to be open
-                if (this.window) {
-                    if (this.isOpen) {
-                        this.window.style.display = 'flex';
-                    } else {
-                        this.window.style.display = 'none';
-                    }
-                }
+            if (!this.wrapper) return;
+            
+            this.wrapper.style.setProperty('display', 'block', 'important');
+            this.wrapper.style.setProperty('visibility', 'visible', 'important');
+            this.wrapper.style.setProperty('opacity', '1', 'important');
+            
+            if (this.bubble) {
+                this.bubble.style.setProperty('display', 'flex', 'important');
+                this.bubble.style.setProperty('visibility', 'visible', 'important');
+                this.bubble.style.setProperty('opacity', '1', 'important');
             }
+            
+            if (this.window && this.isOpen) {
+                this.window.style.setProperty('display', 'flex', 'important');
+                this.window.style.setProperty('visibility', 'visible', 'important');
+                this.window.style.setProperty('opacity', '1', 'important');
+            }
+            
+            // Re-apply browser-specific fixes
+            this.applyBrowserSpecificFixes();
         }
     }
     
     // Initialize the assistant once DOM is loaded
     function initBCAssistant() {
+        // Only initialize once
+        if (bcAssistantInstance) {
+            console.log("BC Assistant already initialized");
+            return;
+        }
+        
         try {
-            window.bcAssistant = new BCAssistant(bcConfig);
+            // Make sure welcome message is set
+            if (typeof window.bcAssistantWelcomeMessage === 'undefined' || !window.bcAssistantWelcomeMessage) {
+                window.bcAssistantWelcomeMessage = 'Witaj! W czym mogę pomóc?';
+            }
+            
+            // Update config with welcome message if needed
+            if (window.bcAssistantData && !window.bcAssistantData.welcomeMessage) {
+                window.bcAssistantData.welcomeMessage = window.bcAssistantWelcomeMessage;
+            }
+            
+            // Remove any existing instances
+            const existingWrapper = document.querySelector('.bc-assistant-wrapper');
+            if (existingWrapper) {
+                existingWrapper.remove();
+            }
+            
+            // Create the assistant
+            bcAssistantInstance = new BCAssistant(bcConfig);
+            window.bcAssistant = bcAssistantInstance;
             console.log("BC Assistant initialized successfully");
         } catch (error) {
             console.error("BC Assistant initialization error:", error);
@@ -588,43 +703,108 @@ formatMessage(text) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initBCAssistant);
     } else {
+        // Document already loaded, initialize now
         initBCAssistant();
     }
+    
+    // Add special initialization for mobile devices
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add a slight delay for mobile devices to ensure all resources are loaded
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            setTimeout(function() {
+                if (!bcAssistantInstance) {
+                    console.log("BC Assistant: Mobile-specific initialization");
+                    initBCAssistant();
+                }
+                
+                // Force visibility check for mobile
+                if (bcAssistantInstance) {
+                    bcAssistantInstance.ensureVisibility();
+                }
+            }, 1000);
+        }
+    });
+    
+    // Make the initBCAssistant function globally available
+    window.initBCAssistant = initBCAssistant;
     
 })(jQuery);
 
-// New event handler to prevent propagation issues
-document.addEventListener('DOMContentLoaded', function(e) {
-    // Initialize BC Assistant safely
-    if (typeof initBCAssistant === 'function') {
-        initBCAssistant();
-    }
-    
-    // Ensure events don't propagate beyond what's needed
-    document.querySelectorAll('.bc-assistant-wrapper, .bc-assistant-bubble, .bc-assistant-window')
-        .forEach(function(el) {
-            el.addEventListener('touchmove', function(e) {
-                e.stopPropagation();
-            }, { passive: true });
-        });
-}, { passive: true });
-
-(function() {
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('BC Assistant: Checking welcome message initialization');
-        
-        if (typeof window.bcAssistantWelcomeMessage === 'undefined' || !window.bcAssistantWelcomeMessage) {
-            console.warn('BC Assistant: Welcome message not found in global scope, setting default');
-            window.bcAssistantWelcomeMessage = 'Witaj! W czym mogę pomóc?';
+// Add inline CSS fixes - these will take precedence over stylesheet rules
+document.addEventListener('DOMContentLoaded', function() {
+    // Create a style element for critical CSS fixes
+    const styleEl = document.createElement('style');
+    styleEl.id = 'bc-assistant-critical-fixes';
+    styleEl.innerHTML = `
+        /* Critical fixes that override any other styles */
+        .bc-assistant-wrapper {
+            position: fixed !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            z-index: 9999999 !important;
+            pointer-events: auto !important;
         }
         
-        if (typeof window.bcAssistantData === 'undefined' || !window.bcAssistantData.welcomeMessage) {
-            console.warn('BC Assistant: welcomeMessage not found in bcAssistantData, using global welcome message');
-            if (window.bcAssistantData) {
-                window.bcAssistantData.welcomeMessage = window.bcAssistantWelcomeMessage;
+        .bc-assistant-bubble {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            z-index: 9999999 !important;
+        }
+        
+        @media (max-width: 767px) {
+            .bc-assistant-wrapper {
+                bottom: 100px !important;
+            }
+            
+            .bc-assistant-bubble {
+                width: 50px !important;
+                height: 50px !important;
+            }
+            
+            .bc-assistant-window {
+                width: 85vw !important;
+                max-width: 350px !important;
+                height: 70vh !important;
             }
         }
         
-        console.log('BC Assistant: Welcome message setup complete');
-    });
-})();
+        /* Firefox mobile fixes */
+        @-moz-document url-prefix() {
+            @media (max-width: 767px) {
+                .bc-assistant-wrapper {
+                    min-width: 50px !important;
+                    min-height: 50px !important;
+                    clip: auto !important;
+                    pointer-events: auto !important;
+                    transform: none !important;
+                }
+                
+                .bc-assistant-bubble {
+                    transform: none !important;
+                    clip-path: none !important;
+                }
+            }
+        }
+        
+        /* iOS fixes */
+        @supports (-webkit-touch-callout: none) {
+            .bc-assistant-wrapper {
+                pointer-events: auto !important;
+            }
+            
+            .bc-assistant-bubble {
+                cursor: pointer !important;
+                -webkit-user-select: none !important;
+                user-select: none !important;
+            }
+        }
+    `;
+    
+    // Add the style element to the head
+    document.head.appendChild(styleEl);
+});

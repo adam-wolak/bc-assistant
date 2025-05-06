@@ -1,341 +1,352 @@
 /**
  * BC Assistant - Complete CSS Fix
- * This CSS resolves all mobile display issues and Droplabs compatibility problems
+ * This CSS resolves all mobile display issues across browsers
  */
 
 /* 
- * Core structure
- * Using a more specific selector hierarchy to avoid conflicts 
+ * Core structure with high specificity selectors
  */
 .bc-assistant-wrapper {
-    position: fixed;
-    z-index: 999999;
-    box-sizing: border-box;
-    display: block;
-    visibility: visible;
-    opacity: 1;
-    pointer-events: auto;
+    position: fixed !important;
+    z-index: 9999999 !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+    isolation: isolate !important;
+    contain: content !important;
 }
 
-/* Position variations with clear specificity */
+/* Position variations */
 .bc-assistant-wrapper[data-position="bottom-right"] {
-    right: 20px;
-    bottom: 20px;
+    right: 20px !important;
+    bottom: 20px !important;
+    left: auto !important;
+    top: auto !important;
 }
 
 .bc-assistant-wrapper[data-position="bottom-left"] {
-    left: 20px;
-    bottom: 20px;
+    left: 20px !important;
+    bottom: 20px !important;
+    right: auto !important;
+    top: auto !important;
 }
 
 .bc-assistant-wrapper[data-position="top-right"] {
-    right: 20px;
-    top: 20px;
+    right: 20px !important;
+    top: 20px !important;
+    bottom: auto !important;
+    left: auto !important;
 }
 
 .bc-assistant-wrapper[data-position="top-left"] {
-    left: 20px;
-    top: 20px;
-}
-
-/* Droplabs conflict resolution */
-.bc-assistant-wrapper[data-has-droplabs="true"][data-position="bottom-right"],
-.bc-assistant-wrapper[data-has-droplabs="true"][data-position="bottom-left"] {
-    bottom: 150px;
+    left: 20px !important;
+    top: 20px !important;
+    bottom: auto !important;
+    right: auto !important;
 }
 
 /* Container */
 .bc-assistant-wrapper .bc-assistant-container {
-    position: relative;
-    display: block;
-    z-index: inherit;
-    box-sizing: border-box;
-    visibility: visible;
-    opacity: 1;
+    position: relative !important;
+    display: block !important;
+    z-index: inherit !important;
+    box-sizing: border-box !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 /* Bubble button */
 .bc-assistant-wrapper .bc-assistant-bubble {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background-color: #A67C52; /* Bielsko Clinic color */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    transition: transform 0.3s ease;
-    z-index: inherit;
-    visibility: visible;
-    opacity: 1;
-    color: white;
-    font-size: 24px;
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 50% !important;
+    background-color: #A67C52 !important; /* Bielsko Clinic color */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
+    transition: transform 0.3s ease !important;
+    z-index: inherit !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: white !important;
+    font-size: 24px !important;
+    position: relative !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-bubble:hover {
-    transform: scale(1.1);
+    transform: scale(1.1) !important;
 }
 
 /* Chat window */
 .bc-assistant-wrapper .bc-assistant-window {
-    position: absolute;
-    bottom: 70px;
-    right: 0;
-    width: 350px;
-    height: 500px;
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
-    display: none; /* Hidden by default */
-    flex-direction: column;
-    overflow: hidden;
-    z-index: inherit;
-    box-sizing: border-box;
+    position: absolute !important;
+    bottom: 70px !important;
+    right: 0 !important;
+    width: 350px !important;
+    height: 500px !important;
+    background-color: #fff !important;
+    border-radius: 10px !important;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2) !important;
+    display: none !important; /* Hidden by default */
+    flex-direction: column !important;
+    overflow: hidden !important;
+    z-index: inherit !important;
+    box-sizing: border-box !important;
 }
 
 /* Left position adjustment */
-.bc-assistant-wrapper[data-position="bottom-left"] .bc-assistant-window,
-.bc-assistant-wrapper[data-position="top-left"] .bc-assistant-window {
-    right: auto;
-    left: 0;
+.bc-assistant-wrapper[data-position="bottom-left"] .bc-assistant-window {
+    right: auto !important;
+    left: 0 !important;
 }
 
 /* Top position adjustment */
-.bc-assistant-wrapper[data-position="top-right"] .bc-assistant-window,
+.bc-assistant-wrapper[data-position="top-right"] .bc-assistant-window {
+    bottom: auto !important;
+    top: 70px !important;
+}
+
 .bc-assistant-wrapper[data-position="top-left"] .bc-assistant-window {
-    bottom: auto;
-    top: 70px;
+    bottom: auto !important;
+    top: 70px !important;
+    right: auto !important;
+    left: 0 !important;
 }
 
 /* Chat header */
 .bc-assistant-wrapper .bc-assistant-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    background-color: #A67C52; /* Bielsko Clinic color */
-    color: #fff;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 15px !important;
+    background-color: #A67C52 !important; /* Bielsko Clinic color */
+    color: #fff !important;
+    border-top-left-radius: 10px !important;
+    border-top-right-radius: 10px !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-title {
-    font-weight: bold;
-    font-size: 16px;
+    font-weight: bold !important;
+    font-size: 16px !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-controls {
-    display: flex;
-    align-items: center;
+    display: flex !important;
+    align-items: center !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-minimize,
 .bc-assistant-wrapper .bc-assistant-close {
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 16px;
-    cursor: pointer;
-    padding: 0;
-    margin-left: 10px;
-    line-height: 1;
+    background: none !important;
+    border: none !important;
+    color: #fff !important;
+    font-size: 16px !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    margin-left: 10px !important;
+    line-height: 1 !important;
 }
 
 /* Messages container */
 .bc-assistant-wrapper .bc-assistant-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 15px;
-    background-color: #f5f5f5;
-    display: flex;
-    flex-direction: column;
-    scroll-behavior: smooth;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 15px !important;
+    background-color: #f5f5f5 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    scroll-behavior: smooth !important;
 }
 
 /* Message styling */
 .bc-assistant-wrapper .bc-message {
-    margin-bottom: 15px;
-    max-width: 80%;
-    display: flex;
-    flex-direction: column;
+    margin-bottom: 15px !important;
+    max-width: 80% !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 .bc-assistant-wrapper .bc-message-user {
-    align-self: flex-end;
+    align-self: flex-end !important;
 }
 
 .bc-assistant-wrapper .bc-message-assistant {
-    align-self: flex-start;
+    align-self: flex-start !important;
 }
 
 .bc-assistant-wrapper .bc-message-content {
-    padding: 10px 15px;
-    border-radius: 18px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    word-wrap: break-word;
-    line-height: 1.4;
+    padding: 10px 15px !important;
+    border-radius: 18px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+    word-wrap: break-word !important;
+    line-height: 1.4 !important;
 }
 
 .bc-assistant-wrapper .bc-message-user .bc-message-content {
-    background-color: #A67C52; /* Bielsko Clinic color */
-    color: #fff;
-    border-bottom-right-radius: 5px;
+    background-color: #A67C52 !important; /* Bielsko Clinic color */
+    color: #fff !important;
+    border-bottom-right-radius: 5px !important;
 }
 
 .bc-assistant-wrapper .bc-message-assistant .bc-message-content {
-    background-color: #fff;
-    color: #333;
-    border-bottom-left-radius: 5px;
+    background-color: #fff !important;
+    color: #333 !important;
+    border-bottom-left-radius: 5px !important;
 }
 
 .bc-assistant-wrapper .bc-message-timestamp {
-    font-size: 12px;
-    color: #888;
-    margin-top: 5px;
-    text-align: right;
+    font-size: 12px !important;
+    color: #888 !important;
+    margin-top: 5px !important;
+    text-align: right !important;
 }
 
 /* Input container */
 .bc-assistant-wrapper .bc-assistant-input-container {
-    display: flex;
-    padding: 10px;
-    border-top: 1px solid #eee;
-    background-color: #fff;
+    display: flex !important;
+    padding: 10px !important;
+    border-top: 1px solid #eee !important;
+    background-color: #fff !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-input {
-    flex: 1;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    padding: 10px 15px;
-    font-size: 14px;
-    resize: none;
-    outline: none;
-    min-height: 40px;
-    max-height: 100px;
-    overflow-y: auto;
+    flex: 1 !important;
+    border: 1px solid #ddd !important;
+    border-radius: 20px !important;
+    padding: 10px 15px !important;
+    font-size: 14px !important;
+    resize: none !important;
+    outline: none !important;
+    min-height: 40px !important;
+    max-height: 100px !important;
+    overflow-y: auto !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-input:focus {
-    border-color: #A67C52;
-    box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.1);
+    border-color: #A67C52 !important;
+    box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.1) !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-send {
-    background-color: #A67C52;
-    color: #fff;
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    margin-left: 10px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.3s;
+    background-color: #A67C52 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 40px !important;
+    height: 40px !important;
+    margin-left: 10px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background-color 0.3s !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-send:hover {
-    background-color: #8D6848;
+    background-color: #8D6848 !important;
 }
 
 /* Typing indicator */
 .bc-assistant-wrapper .bc-typing-indicator {
-    margin-bottom: 10px;
+    margin-bottom: 10px !important;
 }
 
 .bc-assistant-wrapper .bc-typing-dots {
-    display: flex;
-    align-items: center;
+    display: flex !important;
+    align-items: center !important;
 }
 
 .bc-assistant-wrapper .bc-typing-dots span {
-    width: 8px;
-    height: 8px;
-    margin: 0 2px;
-    background-color: #A67C52;
-    border-radius: 50%;
-    display: inline-block;
-    animation: bc-typing 1.4s infinite ease-in-out both;
+    width: 8px !important;
+    height: 8px !important;
+    margin: 0 2px !important;
+    background-color: #A67C52 !important;
+    border-radius: 50% !important;
+    display: inline-block !important;
+    animation: bc-typing 1.4s infinite ease-in-out both !important;
 }
 
 .bc-assistant-wrapper .bc-typing-dots span:nth-child(2) {
-    animation-delay: 0.2s;
+    animation-delay: 0.2s !important;
 }
 
 .bc-assistant-wrapper .bc-typing-dots span:nth-child(3) {
-    animation-delay: 0.4s;
+    animation-delay: 0.4s !important;
 }
 
 @keyframes bc-typing {
     0%, 80%, 100% {
-        transform: scale(0.75);
-        opacity: 0.2;
+        transform: scale(0.75) !important;
+        opacity: 0.2 !important;
     }
     50% {
-        transform: scale(1);
-        opacity: 1;
+        transform: scale(1) !important;
+        opacity: 1 !important;
     }
 }
 
 /* Message content formatting */
 .bc-assistant-wrapper .bc-message-content a {
-    color: inherit;
-    text-decoration: underline;
+    color: inherit !important;
+    text-decoration: underline !important;
 }
 
 .bc-assistant-wrapper .bc-message-content code {
-    background-color: rgba(0, 0, 0, 0.05);
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: monospace;
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    padding: 2px 4px !important;
+    border-radius: 3px !important;
+    font-family: monospace !important;
 }
 
 .bc-assistant-wrapper .bc-message-content pre {
-    background-color: #1E1E1E;
-    padding: 10px;
-    border-radius: 5px;
-    overflow-x: auto;
-    margin: 10px 0;
+    background-color: #1E1E1E !important;
+    padding: 10px !important;
+    border-radius: 5px !important;
+    overflow-x: auto !important;
+    margin: 10px 0 !important;
 }
 
 .bc-assistant-wrapper .bc-message-content pre code {
-    background-color: transparent;
-    color: #FFFFFF;
-    padding: 0;
+    background-color: transparent !important;
+    color: #FFFFFF !important;
+    padding: 0 !important;
 }
 
 /* Scrollbar styling */
 .bc-assistant-wrapper .bc-assistant-messages::-webkit-scrollbar {
-    width: 6px;
+    width: 6px !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-messages::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.05) !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-messages::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 3px !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-input::-webkit-scrollbar {
-    width: 6px;
+    width: 6px !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-input::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.05) !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-input::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 3px !important;
 }
 
-/* Mobile styles */
-
+/* Mobile styles - applied to all devices under 767px */
 @media (max-width: 767px) {
     /* Forceful mobile positioning and visibility */
     .bc-assistant-wrapper {
@@ -347,25 +358,10 @@
         pointer-events: auto !important;
         touch-action: auto !important;
         -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
-    }
-    
-    /* Default position on mobile - apply to all position classes for consistency */
-    .bc-assistant-wrapper,
-    .bc-assistant-wrapper.bc-position-bottom-right,
-    .bc-assistant-wrapper.bc-position-bottom-left,
-    .bc-assistant-wrapper.bc-position-top-right,
-    .bc-assistant-wrapper.bc-position-top-left {
         bottom: 100px !important; /* Higher position on mobile */
         right: 20px !important;
         left: auto !important;
         top: auto !important;
-    }
-    
-    /* Position adjustment when conflicts detected */
-    .bc-assistant-wrapper.bc-adjust-position,
-    .bc-assistant-wrapper.bc-position-bottom-right.bc-adjust-position,
-    .bc-assistant-wrapper.bc-position-bottom-left.bc-adjust-position {
-        bottom: 170px !important; /* Move even higher when conflicts exist */
     }
     
     /* Ensure bubble is visible */
@@ -390,7 +386,6 @@
         max-width: 350px !important;
         height: 70vh !important;
         max-height: 500px !important;
-        right: 0 !important;
     }
     
     /* Ensure messages fit mobile screen better */
@@ -410,18 +405,14 @@
     }
 }
 
-/* Safari and iOS specific fixes */
-@supports (-webkit-touch-callout: none) {
-    .bc-assistant-wrapper {
-        pointer-events: auto !important;
-    }
-    
-    .bc-assistant-wrapper .bc-assistant-bubble {
-        /* Ensure the bubble is tappable on iOS */
-        cursor: pointer !important;
-        -webkit-user-select: none !important;
-        user-select: none !important;
-    }
+/* Extra tap area for mobile devices to help with touch targets */
+.bc-assistant-wrapper .bc-assistant-bubble .bc-tap-area {
+    position: absolute !important;
+    top: -10px !important;
+    left: -10px !important;
+    right: -10px !important;
+    bottom: -10px !important;
+    z-index: 1 !important;
 }
 
 /* Firefox-specific fixes */
@@ -431,6 +422,7 @@
             min-width: 50px !important;
             min-height: 50px !important;
             clip: auto !important;
+            clip-path: none !important;
             pointer-events: auto !important;
             transform: none !important;
         }
@@ -439,6 +431,19 @@
             transform: none !important;
             clip-path: none !important;
         }
+    }
+}
+
+/* Safari and iOS specific fixes */
+@supports (-webkit-touch-callout: none) {
+    .bc-assistant-wrapper {
+        pointer-events: auto !important;
+    }
+    
+    .bc-assistant-wrapper .bc-assistant-bubble {
+        cursor: pointer !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
     }
 }
 
@@ -469,11 +474,6 @@ html.bc-assistant-open {
     .bc-assistant-wrapper[data-position="bottom-left"] .bc-assistant-window {
         right: auto !important;
         left: 0 !important;
-    }
-    
-    /* Adjust position with Droplabs present */
-    .bc-assistant-wrapper[data-has-droplabs="true"] {
-        bottom: 150px !important;
     }
 }
 
@@ -507,32 +507,32 @@ html.bc-assistant-open {
 }
 
 .bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark {
-    color-scheme: dark;
+    color-scheme: dark !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-window {
-    background-color: #222;
-    color: #fff;
+    background-color: #222 !important;
+    color: #fff !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-messages {
-    background-color: #333;
+    background-color: #333 !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-message-assistant .bc-message-content {
-    background-color: #444;
-    color: #fff;
+    background-color: #444 !important;
+    color: #fff !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-input-container {
-    background-color: #222;
-    border-top-color: #444;
+    background-color: #222 !important;
+    border-top-color: #444 !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-input {
-    background-color: #333;
-    border-color: #444;
-    color: #fff;
+    background-color: #333 !important;
+    border-color: #444 !important;
+    color: #fff !important;
 }
 
 /* Accessibility improvements */
@@ -541,30 +541,23 @@ html.bc-assistant-open {
 .bc-assistant-wrapper .bc-assistant-minimize:focus,
 .bc-assistant-wrapper .bc-assistant-send:focus,
 .bc-assistant-wrapper .bc-assistant-input:focus {
-    outline: 2px solid #A67C52;
-    outline-offset: 2px;
-}
-
-.bc-assistant-wrapper .bc-assistant-bubble,
-.bc-assistant-wrapper .bc-assistant-close,
-.bc-assistant-wrapper .bc-assistant-minimize,
-.bc-assistant-wrapper .bc-assistant-send {
-    cursor: pointer;
+    outline: 2px solid #A67C52 !important;
+    outline-offset: 2px !important;
 }
 
 /* Animation for transitions */
 .bc-assistant-wrapper .bc-assistant-window {
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease !important;
 }
 
 .bc-assistant-wrapper .bc-assistant-window.bc-fade-in {
-    opacity: 0;
-    animation: bc-fade-in 0.3s forwards;
+    opacity: 0 !important;
+    animation: bc-fade-in 0.3s forwards !important;
 }
 
 @keyframes bc-fade-in {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0 !important; transform: translateY(10px) !important; }
+    to { opacity: 1 !important; transform: translateY(0) !important; }
 }
 
 /* Print media query to hide assistant when printing */
@@ -574,150 +567,28 @@ html.bc-assistant-open {
     }
 }
 
-/* Base positioning classes */
-.bc-assistant-wrapper.bc-position-bottom-right {
-    bottom: 20px;
-    right: 20px;
-    left: auto;
-    top: auto;
-}
-
-.bc-assistant-wrapper.bc-position-bottom-left {
-    bottom: 20px;
-    left: 20px;
-    right: auto;
-    top: auto;
-}
-
-.bc-assistant-wrapper.bc-position-top-right {
-    top: 20px;
-    right: 20px;
-    bottom: auto;
-    left: auto;
-}
-
-.bc-assistant-wrapper.bc-position-top-left {
-    top: 20px;
-    left: 20px;
-    bottom: auto;
-    right: auto;
-}
-
-/* Adjusted positions when conflicts are detected */
-.bc-assistant-wrapper.bc-adjust-position.bc-position-bottom-right,
-.bc-assistant-wrapper.bc-adjust-position.bc-position-bottom-left {
-    bottom: 120px !important; /* Move higher when conflicts exist */
-}
-
-/* Mobile styles */
-@media (max-width: 767px) {
-    /* Forceful mobile positioning and visibility */
+/* Edge-specific fixes */
+@supports (-ms-ime-align: auto) {
     .bc-assistant-wrapper {
-        position: fixed !important;
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        z-index: 9999999 !important; /* Even higher z-index for mobile */
-    }
-    
-    /* Default position on mobile - apply to all position classes for consistency */
-    .bc-assistant-wrapper,
-    .bc-assistant-wrapper.bc-position-bottom-right,
-    .bc-assistant-wrapper.bc-position-bottom-left,
-    .bc-assistant-wrapper.bc-position-top-right,
-    .bc-assistant-wrapper.bc-position-top-left {
-        bottom: 100px !important; /* Higher position on mobile */
-        right: 20px !important;
-        left: auto !important;
-        top: auto !important;
-    }
-    
-    /* Position adjustment when conflicts detected */
-    .bc-assistant-wrapper.bc-adjust-position,
-    .bc-assistant-wrapper.bc-position-bottom-right.bc-adjust-position,
-    .bc-assistant-wrapper.bc-position-bottom-left.bc-adjust-position {
-        bottom: 170px !important; /* Move even higher when conflicts exist */
-    }
-    
-    /* Ensure bubble is visible */
-    .bc-assistant-wrapper .bc-assistant-bubble {
-        width: 50px !important;
-        height: 50px !important;
-        font-size: 20px !important;
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    
-    /* Window sizing for mobile */
-    .bc-assistant-wrapper .bc-assistant-window {
-        width: 85vw !important;
-        max-width: 350px !important;
-        height: 70vh !important;
-        max-height: 500px !important;
-        right: 0 !important;
-    }
-    
-    /* Ensure messages fit mobile screen better */
-    .bc-assistant-wrapper .bc-message {
-        max-width: 90% !important;
-    }
-    
-    /* Better tap target and readability */
-    .bc-assistant-wrapper .bc-assistant-input {
-        font-size: 16px !important; /* Better size for touch devices */
-        min-height: 44px !important; /* Better tap target */
-    }
-    
-    .bc-assistant-wrapper .bc-assistant-send {
-        width: 44px !important;
-        height: 44px !important;
+        transform: translateZ(0) !important;
     }
 }
 
-/* Visual indicator for users - can be removed if not needed */
-.bc-assistant-wrapper.bc-adjust-position .bc-assistant-bubble {
-    border: 2px solid #fff; /* Subtle visual indicator that position was adjusted */
+/* Fix for z-index stacking context */
+.bc-assistant-wrapper,
+.bc-assistant-wrapper * {
+    transform: translateZ(0) !important;
 }
 
-/* Prevent interference with page scrolling */
-html.bc-assistant-open, 
-body.bc-assistant-open {
-    overflow: auto !important;
-    height: auto !important;
-    position: static !important;
-}
-
-/* Isolate the assistant from affecting other elements */
-.bc-assistant-wrapper {
-    isolation: isolate;
-    contain: content;
-}
-
-/* Fix scrolling on mobile */
-@media (max-width: 767px) {
-    /* Ensure the page can scroll normally */
-    html, body {
-        overflow-y: auto !important;
-        height: auto !important;
-        overscroll-behavior-y: auto !important;
-    }
-    
-    /* Prevent event bubbling that might interfere with third-party scripts */
-    .bc-assistant-wrapper {
-        pointer-events: auto;
-        touch-action: none;
-    }
-    
-    /* Only enable touch actions on elements that need them */
-    .bc-assistant-bubble {
-        touch-action: manipulation;
-        pointer-events: auto;
-    }
-    
-    .bc-assistant-window {
-        touch-action: auto;
+/* Special fix for Firefox Mobile */
+@media (max-width: 767px) and (-moz-touch-enabled: 1) {
+    .bc-assistant-bubble::before {
+        content: "" !important;
+        position: absolute !important;
+        top: -20px !important;
+        right: -20px !important;
+        bottom: -20px !important;
+        left: -20px !important;
+        z-index: 1 !important;
     }
 }
