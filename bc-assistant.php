@@ -437,4 +437,28 @@ function bc_assistant_defer_scripts($tag, $handle, $src) {
     
     return $tag;
 }
+/**
+ * Add defer attribute to JS files
+ */
+function bc_assistant_defer_scripts($tag, $handle, $src) {
+    $defer_scripts = array(
+        'bc-assistant-script',
+    );
+    
+    if (in_array($handle, $defer_scripts)) {
+        return str_replace(' src', ' defer src', $tag);
+    }
+    
+    return $tag;
+}
+
+// Enqueue emergency fix script - add this HERE
+wp_enqueue_script(
+    'bc-assistant-emergency-fix',
+    BC_ASSISTANT_URL . 'assets/js/emergency-fix.js',
+    array('jquery', 'bc-assistant-script'),
+    BC_ASSISTANT_VERSION . '.' . time(),
+    true
+);
+
 add_filter('script_loader_tag', 'bc_assistant_defer_scripts', 10, 3);
