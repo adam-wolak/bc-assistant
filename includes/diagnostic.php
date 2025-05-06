@@ -195,42 +195,64 @@ function bc_assistant_diagnostic_page() {
         <button id="bc-assistant-diagnostic-test" class="button">Test JavaScript Initialization</button>
         
         <script>
-            jQuery(document).ready(function($) {
-                $('#bc-assistant-diagnostic-test').on('click', function() {
-                    console.log('BC Assistant Diagnostic: Testing JavaScript initialization');
-                    
-                    try {
-                        // Check if global config exists
-                        console.log('BC Assistant Diagnostic: Checking global configuration');
-                        if (typeof bcAssistantData === 'undefined') {
-                            console.error('BC Assistant Diagnostic: bcAssistantData is not defined');
-                        } else {
-                            console.log('BC Assistant Diagnostic: bcAssistantData is defined', bcAssistantData);
-                        }
-                        
-                        // Check if welcome message exists
-                        console.log('BC Assistant Diagnostic: Checking welcome message');
-                        if (typeof window.bcAssistantWelcomeMessage === 'undefined') {
-                            console.warn('BC Assistant Diagnostic: bcAssistantWelcomeMessage is not defined');
-                        } else {
-                            console.log('BC Assistant Diagnostic: bcAssistantWelcomeMessage is defined', window.bcAssistantWelcomeMessage);
-                        }
-                        
-                        // Try to find bubble element
-                        console.log('BC Assistant Diagnostic: Checking for bubble element');
-                        var bubble = document.querySelector('.bc-assistant-bubble');
-                        if (!bubble) {
-                            console.error('BC Assistant Diagnostic: Bubble element not found');
-                        } else {
-                            console.log('BC Assistant Diagnostic: Bubble element found', bubble);
-                        }
-                        
-                        console.log('BC Assistant Diagnostic: Test completed');
-                    } catch (error) {
-                        console.error('BC Assistant Diagnostic: Error during test', error);
-                    }
-                });
-            });
+jQuery(document).ready(function($) {
+    $('#bc-assistant-diagnostic-test').on('click', function() {
+        console.clear(); // Clear previous console output
+        console.log('BC Assistant Diagnostic: Starting test...');
+        
+        // Add visual feedback that the button was clicked
+        $(this).text('Running test...').addClass('button-primary');
+        
+        try {
+            // Check if global config exists
+            console.log('BC Assistant Diagnostic: Checking global configuration');
+            if (typeof bcAssistantData === 'undefined') {
+                console.error('BC Assistant Diagnostic: bcAssistantData is not defined');
+            } else {
+                console.log('BC Assistant Diagnostic: bcAssistantData is defined', bcAssistantData);
+            }
+            
+            // Check if welcome message exists
+            console.log('BC Assistant Diagnostic: Checking welcome message');
+            if (typeof window.bcAssistantWelcomeMessage === 'undefined') {
+                console.warn('BC Assistant Diagnostic: bcAssistantWelcomeMessage is not defined');
+            } else {
+                console.log('BC Assistant Diagnostic: bcAssistantWelcomeMessage is defined', window.bcAssistantWelcomeMessage);
+            }
+            
+            // Try to find bubble element
+            console.log('BC Assistant Diagnostic: Checking for bubble element');
+            var bubble = document.querySelector('.bc-assistant-bubble');
+            if (!bubble) {
+                console.error('BC Assistant Diagnostic: Bubble element not found');
+            } else {
+                console.log('BC Assistant Diagnostic: Bubble element found', bubble);
+            }
+            
+            // Also check for BC Assistant instance
+            console.log('BC Assistant Diagnostic: Checking for BC Assistant instance');
+            if (typeof window.bcAssistant === 'undefined') {
+                console.error('BC Assistant Diagnostic: bcAssistant instance not found');
+            } else {
+                console.log('BC Assistant Diagnostic: bcAssistant instance found', window.bcAssistant);
+            }
+            
+            console.log('BC Assistant Diagnostic: Test completed');
+            
+            // Visual feedback of completion
+            $(this).after('<div style="color:green;margin-top:10px;">✓ Test completed. Check browser console (F12) for results.</div>');
+        } catch (error) {
+            console.error('BC Assistant Diagnostic: Error during test', error);
+            // Visual feedback of error
+            $(this).after('<div style="color:red;margin-top:10px;">✗ Error occurred: ' + error.message + '</div>');
+        } finally {
+            // Reset button state
+            setTimeout(function() {
+                $('#bc-assistant-diagnostic-test').text('Test JavaScript Initialization').removeClass('button-primary');
+            }, 2000);
+        }
+    });
+});
         </script>
     </div>
     <?php

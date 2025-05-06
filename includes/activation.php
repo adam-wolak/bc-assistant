@@ -7,6 +7,27 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Add code to your plugin activation function to check and create .env file if needed
+function bc_assistant_check_env_file() {
+    $env_file = ABSPATH . '.env';
+    
+    if (!file_exists($env_file)) {
+        $env_content = "# BC Assistant Environment Variables\n";
+        $env_content .= "OPENAI_MODEL=gpt-4o\n";
+        $env_content .= "OPENAI_ASSISTANT_ID=" . esc_attr(BC_Assistant_Config::get('assistant_id')) . "\n";
+        
+        // Try to create the file
+        $result = @file_put_contents($env_file, $env_content);
+        
+        if ($result === false) {
+            BC_Assistant_Helper::log('Failed to create .env file at ' . $env_file);
+        } else {
+            BC_Assistant_Helper::log('Created .env file at ' . $env_file);
+        }
+    }
+}
+add_action('admin_init', 'bc_assistant_check_env_file');
+
 /**
  * Actions to perform on plugin activation
  */
@@ -56,9 +77,3 @@ function bc_assistant_check_update() {
     update_option('bc_assistant_version', BC_ASSISTANT_VERSION);
 }
 add_action('plugins_loaded', 'bc_assistant_check_update');
-
-/**
- * Add activation and deactivation hooks to bc-assistant.php file
- */
-// register_activation_hook(__FILE__, 'bc_assistant_activate');
-// register_deactivation_hook(__FILE__, 'bc_assistant_deactivate');
