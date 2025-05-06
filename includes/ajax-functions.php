@@ -314,7 +314,7 @@ function bc_assistant_call_anthropic_api($message, $model, $api_key, $thread_id 
 }
 
 /**
- * Call OpenAI Assistants API
+ * Call OpenAI Assistants API v2
  *
  * @param string $message Message to send
  * @param string $api_key API key
@@ -323,97 +323,117 @@ function bc_assistant_call_anthropic_api($message, $model, $api_key, $thread_id 
  * @return array|WP_Error API response or error object
  */
 function bc_assistant_call_openai_assistants_api($message, $api_key, $assistant_id, $thread_id = null) {
-    // If no thread_id, create a new thread
+    // Set common headers for v2 API
+    $headers = array(
+        'Authorization' => 'Bearer ' . $api_key,
+        'Content-Type' => 'application/json',
+        'OpenAI-Beta' => 'assistants=v2' // Updated to v2
+    );
+    
+    // If no thread_id, we'll use the createThreadAndRun endpoint for efficiency
     if (empty($thread_id)) {
-        // Create new thread
-        $thread_response = wp_remote_post(
-            'https://api.openai.com/v1/threads',
+        BC_Assistant_Helper::log('No thread ID provided, creating new thread and run');
+        
+        // Use createThreadAndRun endpoint
+        $response = wp_remote_post(
+            'https://api.openai.com/v1/threads/runs',
             array(
-                'headers' => array(
-                    'Authorization' => 'Bearer ' . $api_key,
-                    'Content-Type' => 'application/json',
-                    'OpenAI-Beta' => 'assistants=v1'
-                ),
-                'body' => json_encode(array()),
+                'headers' => $headers,
+                'body' => json_encode(array(
+                    'assistant_id' => $assistant_id,
+                    'thread' => array(
+                        'messages' => array(
+                            array(
+                                'role' => 'user',
+                                'content' => $message
+                            )
+                        )
+                    )
+                )),
+                'timeout' => 60
+            )
+        );
+        
+        // Handle errors
+        if (is_wp_error($response)) {
+            BC_Assistant_Helper::log('Error creating thread and run: ' . $response->get_error_message());
+            return $response;
+        }
+        
+        // Check response
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            BC_Assistant_Helper::log('Error response: ' . $response_code . ' - ' . wp_remote_retrieve_body($response));
+            return new WP_Error('api_error', 'API Error: ' . $response_code, wp_remote_retrieve_body($response));
+        }
+        
+        // Get run data
+        $run_data = json_decode(wp_remote_retrieve_body($response), true);
+        if (!isset($run_data['thread_id']) || !isset($run_data['id'])) {
+            BC_Assistant_Helper::log('Invalid response format: ' . wp_remote_retrieve_body($response));
+            return new WP_Error('invalid_response', 'Invalid response format', wp_remote_retrieve_body($response));
+        }
+        
+        // Get thread ID and run ID
+        $thread_id = $run_data['thread_id'];
+        $run_id = $run_data['id'];
+        
+        BC_Assistant_Helper::log('Created thread: ' . $thread_id . ' and run: ' . $run_id);
+    } else {
+        // We have a thread ID, so add message to existing thread and create run
+        BC_Assistant_Helper::log('Using existing thread: ' . $thread_id);
+        
+        // Add message to thread
+        $message_response = wp_remote_post(
+            'https://api.openai.com/v1/threads/' . $thread_id . '/messages',
+            array(
+                'headers' => $headers,
+                'body' => json_encode(array(
+                    'role' => 'user',
+                    'content' => $message
+                )),
                 'timeout' => 30
             )
         );
         
         // Handle errors
-        if (is_wp_error($thread_response)) {
-            BC_Assistant_Helper::log('Error creating thread: ' . $thread_response->get_error_message());
-            return $thread_response;
+        if (is_wp_error($message_response)) {
+            BC_Assistant_Helper::log('Error adding message: ' . $message_response->get_error_message());
+            return $message_response;
         }
         
-        // Get thread ID
-$thread_data = json_decode(wp_remote_retrieve_body($thread_response), true);
-if (empty($thread_data) || !isset($thread_data['id'])) {
-    BC_Assistant_Helper::log('Invalid thread response: ' . wp_remote_retrieve_body($thread_response));
-    return new WP_Error('invalid_response', 'Invalid thread response: ' . wp_remote_retrieve_body($thread_response));
-}
+        // Create run
+        $run_response = wp_remote_post(
+            'https://api.openai.com/v1/threads/' . $thread_id . '/runs',
+            array(
+                'headers' => $headers,
+                'body' => json_encode(array(
+                    'assistant_id' => $assistant_id
+                )),
+                'timeout' => 30
+            )
+        );
         
-        $thread_id = $thread_data['id'];
-        BC_Assistant_Helper::log('Created new thread: ' . $thread_id);
+        // Handle errors
+        if (is_wp_error($run_response)) {
+            BC_Assistant_Helper::log('Error creating run: ' . $run_response->get_error_message());
+            return $run_response;
+        }
+        
+        // Get run ID
+        $run_data = json_decode(wp_remote_retrieve_body($run_response), true);
+        if (!isset($run_data['id'])) {
+            BC_Assistant_Helper::log('Invalid run response: ' . wp_remote_retrieve_body($run_response));
+            return new WP_Error('invalid_response', 'Invalid run response', wp_remote_retrieve_body($run_response));
+        }
+        
+        $run_id = $run_data['id'];
+        BC_Assistant_Helper::log('Created run: ' . $run_id);
     }
     
-    // Add message to thread
-    $message_response = wp_remote_post(
-        'https://api.openai.com/v1/threads/' . $thread_id . '/messages',
-        array(
-            'headers' => array(
-                'Authorization' => 'Bearer ' . $api_key,
-                'Content-Type' => 'application/json',
-                'OpenAI-Beta' => 'assistants=v1'
-            ),
-            'body' => json_encode(array(
-                'role' => 'user',
-                'content' => $message
-            )),
-            'timeout' => 30
-        )
-    );
-    
-    // Handle errors
-    if (is_wp_error($message_response)) {
-        BC_Assistant_Helper::log('Error adding message: ' . $message_response->get_error_message());
-        return $message_response;
-    }
-    
-    // Run assistant
-    $run_response = wp_remote_post(
-        'https://api.openai.com/v1/threads/' . $thread_id . '/runs',
-        array(
-            'headers' => array(
-                'Authorization' => 'Bearer ' . $api_key,
-                'Content-Type' => 'application/json',
-                'OpenAI-Beta' => 'assistants=v1'
-            ),
-            'body' => json_encode(array(
-                'assistant_id' => $assistant_id
-            )),
-            'timeout' => 60
-        )
-    );
-    
-    // Handle errors
-    if (is_wp_error($run_response)) {
-        BC_Assistant_Helper::log('Error starting run: ' . $run_response->get_error_message());
-        return $run_response;
-    }
-    
-    // Get run ID
-    $run_data = json_decode(wp_remote_retrieve_body($run_response), true);
-    if (!isset($run_data['id'])) {
-        BC_Assistant_Helper::log('Invalid run response: ' . wp_remote_retrieve_body($run_response));
-        return new WP_Error('invalid_response', 'Invalid run response');
-    }
-    
-    $run_id = $run_data['id'];
-    BC_Assistant_Helper::log('Started run: ' . $run_id);
-    
-    // Wait for run to complete
+    // Now we have thread_id and run_id, wait for run to complete
     $status = '';
-    $max_retries = 10;
+    $max_retries = 15;
     $retry_count = 0;
     
     while ($retry_count < $max_retries) {
@@ -424,11 +444,7 @@ if (empty($thread_data) || !isset($thread_data['id'])) {
         $status_response = wp_remote_get(
             'https://api.openai.com/v1/threads/' . $thread_id . '/runs/' . $run_id,
             array(
-                'headers' => array(
-                    'Authorization' => 'Bearer ' . $api_key,
-                    'Content-Type' => 'application/json',
-                    'OpenAI-Beta' => 'assistants=v1'
-                ),
+                'headers' => $headers,
                 'timeout' => 30
             )
         );
@@ -443,7 +459,7 @@ if (empty($thread_data) || !isset($thread_data['id'])) {
         $status_data = json_decode(wp_remote_retrieve_body($status_response), true);
         if (!isset($status_data['status'])) {
             BC_Assistant_Helper::log('Invalid status response: ' . wp_remote_retrieve_body($status_response));
-            return new WP_Error('invalid_response', 'Invalid status response');
+            return new WP_Error('invalid_response', 'Invalid status response', wp_remote_retrieve_body($status_response));
         }
         
         $status = $status_data['status'];
@@ -452,9 +468,9 @@ if (empty($thread_data) || !isset($thread_data['id'])) {
         // Check if run is complete
         if ($status === 'completed') {
             break;
-        } elseif ($status === 'failed' || $status === 'cancelled') {
-            BC_Assistant_Helper::log('Run failed or cancelled: ' . wp_remote_retrieve_body($status_response));
-            return new WP_Error('run_failed', 'Run failed or cancelled');
+        } elseif (in_array($status, array('failed', 'cancelled', 'expired'))) {
+            BC_Assistant_Helper::log('Run failed with status: ' . $status . ' - ' . wp_remote_retrieve_body($status_response));
+            return new WP_Error('run_failed', 'Run failed with status: ' . $status, wp_remote_retrieve_body($status_response));
         }
         
         $retry_count++;
@@ -463,18 +479,14 @@ if (empty($thread_data) || !isset($thread_data['id'])) {
     // If max retries exceeded, return error
     if ($retry_count >= $max_retries) {
         BC_Assistant_Helper::log('Run timed out');
-        return new WP_Error('run_timeout', 'Run timed out');
+        return new WP_Error('run_timeout', 'Run timed out after ' . $max_retries . ' retries');
     }
     
     // Get messages
     $messages_response = wp_remote_get(
         'https://api.openai.com/v1/threads/' . $thread_id . '/messages',
         array(
-            'headers' => array(
-                'Authorization' => 'Bearer ' . $api_key,
-                'Content-Type' => 'application/json',
-                'OpenAI-Beta' => 'assistants=v1'
-            ),
+            'headers' => $headers,
             'timeout' => 30
         )
     );
@@ -489,10 +501,10 @@ if (empty($thread_data) || !isset($thread_data['id'])) {
     $messages_data = json_decode(wp_remote_retrieve_body($messages_response), true);
     if (!isset($messages_data['data']) || !is_array($messages_data['data']) || empty($messages_data['data'])) {
         BC_Assistant_Helper::log('Invalid messages response: ' . wp_remote_retrieve_body($messages_response));
-        return new WP_Error('invalid_response', 'Invalid messages response');
+        return new WP_Error('invalid_response', 'Invalid messages response', wp_remote_retrieve_body($messages_response));
     }
     
-    // Find assistant's response (first message with role='assistant')
+    // Find latest assistant message (first in the array, as they're sorted by creation time in descending order)
     $assistant_message = null;
     foreach ($messages_data['data'] as $msg) {
         if ($msg['role'] === 'assistant') {
@@ -506,7 +518,7 @@ if (empty($thread_data) || !isset($thread_data['id'])) {
         return new WP_Error('no_response', 'No assistant message found');
     }
     
-    // Extract text content
+    // Extract text content from the message - v2 API may have different content structure
     $content = '';
     if (isset($assistant_message['content']) && is_array($assistant_message['content'])) {
         foreach ($assistant_message['content'] as $content_part) {
