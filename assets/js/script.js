@@ -19,6 +19,38 @@
     
     // Main BC Assistant class
     class BCAssistant {
+		
+init() {
+    // Create the DOM elements
+    this.createDOM();
+    
+    // Add event listeners
+    this.setupEvents();
+    
+    // Get welcome message from config or global variable or default
+    let welcomeMessage = this.config.welcomeMessage;
+    
+    // If not in config, try global variable
+    if (!welcomeMessage && typeof window.bcAssistantWelcomeMessage !== 'undefined') {
+        welcomeMessage = window.bcAssistantWelcomeMessage;
+    }
+    
+    // If still not found, use default
+    if (!welcomeMessage) {
+        welcomeMessage = 'Witaj! W czym mogę pomóc?';
+        console.warn('BC Assistant: Using default welcome message');
+    }
+    
+    // Add welcome message
+    this.addMessage('assistant', welcomeMessage);
+    
+    // Apply fixes for potential conflicts
+    this.applyFixes();
+    
+    // Set up periodic visibility check
+    setInterval(() => this.ensureVisibility(), 2000);
+}
+
         constructor(config) {
             // Store configuration
             this.config = config;
