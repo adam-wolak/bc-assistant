@@ -1,11 +1,8 @@
 /**
- * BC Assistant - Complete Fix
+ * BC Assistant Fix - Cloudflare Compatible
  * 
- * This script resolves:
- * 1. Click handling issues
- * 2. External script errors (CORS)
- * 3. Floating element conflicts
- * 4. Cross-browser compatibility
+ * This script fixes click handling and positioning issues without
+ * interfering with Cloudflare or other site scripts
  */
 
 (function() {
@@ -15,9 +12,6 @@
     const BC_ASSISTANT_FIX = {
         // Wait for DOM to fully load
         init: function() {
-            // Remove problematic external scripts
-            this.removeExternalTrackers();
-            
             // Apply fixes when DOM is ready
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', this.applyFixes.bind(this));
@@ -29,27 +23,7 @@
             window.addEventListener('load', this.applyFixes.bind(this));
             
             // Set up periodic check to ensure fixes remain applied
-            setInterval(this.applyFixes.bind(this), 2000);
-        },
-        
-        // Remove problematic external scripts causing CORS errors
-        removeExternalTrackers: function() {
-            // Find and remove external scripts that cause CORS errors
-            const scriptSelectors = [
-                'script[src*="amplitude"]',
-                'script[src*="cloudflareinsights"]'
-            ];
-            
-            // Check for scripts in head and remove them
-            scriptSelectors.forEach(selector => {
-                const scripts = document.querySelectorAll(selector);
-                scripts.forEach(script => {
-                    if (script && script.parentNode) {
-                        script.parentNode.removeChild(script);
-                        console.log('BC Assistant Fix: Removed problematic script:', selector);
-                    }
-                });
-            });
+            setInterval(this.applyFixes.bind(this), 1000);
         },
         
         // Apply all necessary fixes to make the assistant work
@@ -76,7 +50,7 @@
             this.fixVisibility(wrapper, bubble, chatWindow);
             
             // 2. Fix click handling
-            this.fixClickHandling(bubble, chatWindow);
+            this.fixClickHandling(wrapper, bubble, chatWindow);
             
             // 3. Check for other floating elements and adjust position
             this.adjustForFloatingElements(wrapper, bubble);
@@ -114,8 +88,8 @@
             chatWindow.style.setProperty('z-index', maxZIndex, 'important');
         },
         
-        // Fix click handling
-        fixClickHandling: function(bubble, chatWindow) {
+        // Fix click handling - FIXED to avoid const reassignment error
+        fixClickHandling: function(wrapper, bubble, chatWindow) {
             // Don't add duplicate handlers
             if (bubble.hasAttribute('data-fixed')) {
                 return;
@@ -125,31 +99,23 @@
             bubble.setAttribute('data-fixed', 'true');
             
             // Create an enhanced tap area for better touch detection
-            const tapArea = document.createElement('div');
-            tapArea.className = 'bc-tap-area';
-            tapArea.style.cssText = `
-                position: absolute !important;
-                top: -20px !important;
-                left: -20px !important;
-                right: -20px !important;
-                bottom: -20px !important;
-                z-index: 2 !important;
-                cursor: pointer !important;
-                background-color: transparent !important;
-            `;
+            let tapArea = bubble.querySelector('.bc-tap-area');
             
-            // Add to bubble if it doesn't already have one
-            if (!bubble.querySelector('.bc-tap-area')) {
+            if (!tapArea) {
+                tapArea = document.createElement('div');
+                tapArea.className = 'bc-tap-area';
+                tapArea.style.cssText = `
+                    position: absolute !important;
+                    top: -20px !important;
+                    left: -20px !important;
+                    right: -20px !important;
+                    bottom: -20px !important;
+                    z-index: 2 !important;
+                    cursor: pointer !important;
+                    background-color: transparent !important;
+                `;
                 bubble.appendChild(tapArea);
             }
-            
-            // Clear old event listeners by cloning and replacing elements
-            const newBubble = bubble.cloneNode(true);
-            bubble.parentNode.replaceChild(newBubble, bubble);
-            
-            // Get new references
-            bubble = newBubble;
-            tapArea = bubble.querySelector('.bc-tap-area');
             
             // Create reliable toggle function
             const toggleWindow = function(e) {
@@ -183,17 +149,28 @@
                 return false;
             };
             
-            // Add multiple event types to ensure clickability
-            this.addMultipleEventListeners(bubble, ['click', 'touchend', 'mousedown'], toggleWindow);
-            
-            if (tapArea) {
-                this.addMultipleEventListeners(tapArea, ['click', 'touchend', 'mousedown'], toggleWindow);
+            // Remove old event listeners by cloning and replacing elements
+            const newBubble = bubble.cloneNode(true);
+            if (bubble.parentNode) {
+                bubble.parentNode.replaceChild(newBubble, bubble);
+                
+                // Get new references after replacement
+                // Use let instead of reassigning const variables
+                let updatedBubble = newBubble;
+                let updatedTapArea = updatedBubble.querySelector('.bc-tap-area');
+                
+                // Add multiple event types to ensure clickability
+                this.addMultipleEventListeners(updatedBubble, ['click', 'touchend', 'mousedown'], toggleWindow);
+                
+                if (updatedTapArea) {
+                    this.addMultipleEventListeners(updatedTapArea, ['click', 'touchend', 'mousedown'], toggleWindow);
+                }
+                
+                // Fix window controls (close and minimize buttons)
+                this.fixWindowControls(chatWindow);
+                
+                console.log('BC Assistant Fix: Click handlers applied');
             }
-            
-            // Fix window controls (close and minimize buttons)
-            this.fixWindowControls(chatWindow);
-            
-            console.log('BC Assistant Fix: Click handlers applied');
         },
         
         // Fix window control buttons
@@ -212,12 +189,22 @@
             
             // Add event listeners to close button
             if (closeButton) {
-                this.addMultipleEventListeners(closeButton, ['click', 'touchend'], closeWindow);
+                // Remove old event listeners
+                const newCloseButton = closeButton.cloneNode(true);
+                if (closeButton.parentNode) {
+                    closeButton.parentNode.replaceChild(newCloseButton, closeButton);
+                    this.addMultipleEventListeners(newCloseButton, ['click', 'touchend'], closeWindow);
+                }
             }
             
             // Add event listeners to minimize button
             if (minimizeButton) {
-                this.addMultipleEventListeners(minimizeButton, ['click', 'touchend'], closeWindow);
+                // Remove old event listeners
+                const newMinimizeButton = minimizeButton.cloneNode(true);
+                if (minimizeButton.parentNode) {
+                    minimizeButton.parentNode.replaceChild(newMinimizeButton, minimizeButton);
+                    this.addMultipleEventListeners(newMinimizeButton, ['click', 'touchend'], closeWindow);
+                }
             }
         },
         
