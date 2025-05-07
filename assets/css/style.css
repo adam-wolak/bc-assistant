@@ -600,3 +600,42 @@ html.bc-assistant-open {
 .bc-assistant-wrapper.adjust-for-floating-elements {
     bottom: 200px !important; /* Extra height to avoid other elements */
 }
+/* Optymalizacja pozycji przycisków dla różnych ekranów */
+.bc-assistant-wrapper[data-position="bottom-right"] {
+    right: 20px !important;
+    bottom: 100px !important; /* odstęp standardowy na desktop */
+}
+
+/* Optymalizacja pozycji na mobile, uniknięcie nachodzenia na stopkę */
+@media (max-width: 767px) {
+    .bc-assistant-wrapper[data-position="bottom-right"] {
+        bottom: 120px !important; /* minimalna wysokość nad stopką dla mobile */
+        right: 15px !important; /* nieco bliżej prawej krawędzi ekranu */
+    }
+
+    .bc-assistant-wrapper.adjust-for-floating-elements {
+        bottom: 160px !important; /* dodatkowy zapas, gdy są inne pływające elementy */
+    }
+
+    /* Zmniejszenie ikon i przycisków dla lepszej ergonomii na mobile */
+    .bc-assistant-wrapper .bc-assistant-bubble {
+        width: 45px !important;
+        height: 45px !important;
+        font-size: 18px !important;
+    }
+
+    .bc-assistant-wrapper .bc-assistant-window {
+        width: 90vw !important; /* pełniejsze wykorzystanie szerokości ekranu */
+        max-width: none !important; /* usunięcie ograniczenia */
+        height: 65vh !important; /* dopasowana wysokość okna czatu */
+        bottom: 70px !important; /* nieco wyżej, nad przyciskiem */
+    }
+}
+
+/* Dla bardzo wąskich ekranów (poniżej 480px) dodatkowe zabezpieczenie */
+@media (max-width: 480px) {
+    .bc-assistant-wrapper[data-position="bottom-right"] {
+        bottom: 140px !important; /* zapewnia bezpieczeństwo na najmniejszych ekranach */
+        right: 10px !important;
+    }
+}

@@ -41,7 +41,7 @@ require_once BC_ASSISTANT_PATH . 'includes/migrations.php';
 require_once BC_ASSISTANT_PATH . 'includes/diagnostic.php';
 
 // Load compatibility CSS fixes
-require_once BC_ASSISTANT_PATH . 'includes/compatibility-css.php';
+// require_once BC_ASSISTANT_PATH . 'includes/compatibility-css.php';
 
 /**
  * Load environment variables from .env file (suppress warnings)
@@ -266,6 +266,14 @@ wp_enqueue_style(
         true
     );
 
+// Enqueue BC Assistant fix
+wp_enqueue_script(
+    'bc-assistant-fix',
+    BC_ASSISTANT_URL . 'assets/js/bc-fix.js',
+    array('jquery', 'bc-assistant-script'),
+    BC_ASSISTANT_VERSION . '.' . time(),
+    true
+);
     // Get configuration
     $config = BC_Assistant_Config::get_all();
     
