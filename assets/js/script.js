@@ -1,13 +1,10 @@
 /**
- * BC Assistant - Mobile & Cross-Browser Fix
- * Self-contained solution that doesn't depend on other plugins
+ * BC Assistant - Enhanced Mobile Implementation
+ * This script includes all necessary fixes for cross-browser compatibility
  */
 
 (function($) {
     "use strict";
-    
-    // Store a single instance reference
-    let bcAssistantInstance = null;
     
     // Configuration object - will be populated from WordPress data
     const bcConfig = window.bcAssistantData || {
@@ -20,6 +17,9 @@
         nonce: ""
     };
     
+    // Store single instance reference
+    let bcAssistantInstance = null;
+    
     // Main BC Assistant class
     class BCAssistant {
         constructor(config) {
@@ -31,7 +31,7 @@
             this.threadId = localStorage.getItem('bc_assistant_thread_id') || '';
             this.isMobile = this.checkIfMobile();
             
-            // Initialize only once
+            // Initialize the assistant
             this.init();
             
             // Log initialization for debugging
@@ -49,7 +49,10 @@
         
         // Initialize the assistant
         init() {
+            // Create the DOM elements
             this.createDOM();
+            
+            // Add event listeners
             this.setupEvents();
             
             // Get welcome message from config or global variable or default
@@ -63,13 +66,14 @@
             // If still not found, use default
             if (!welcomeMessage) {
                 welcomeMessage = 'Witaj! W czym mogę pomóc?';
+                console.log('BC Assistant: Using default welcome message');
             }
             
             // Add welcome message
             this.addMessage('assistant', welcomeMessage);
             
-            // Apply fixes for display issues
-            this.fixDisplay();
+            // Apply fixes for potential conflicts
+            this.applyFixes();
             
             // Set up periodic visibility check
             setInterval(() => this.ensureVisibility(), 2000);
@@ -77,7 +81,7 @@
         
         // Create all DOM elements
         createDOM() {
-            // Create wrapper
+            // Create wrapper (highest level container)
             this.wrapper = document.createElement('div');
             this.wrapper.className = 'bc-assistant-wrapper';
             this.wrapper.setAttribute('data-position', this.config.position);
@@ -96,6 +100,9 @@
             this.bubble.className = 'bc-assistant-bubble';
             this.bubble.innerHTML = '<i class="fas fa-comments"></i>';
             
+            // Create enhanced tap area for better click detection
+            this.createEnhancedTapArea();
+            
             // Create chat window
             this.window = document.createElement('div');
             this.window.className = 'bc-assistant-window';
@@ -106,10 +113,10 @@
             header.innerHTML = `
                 <div class="bc-assistant-title">${this.config.title}</div>
                 <div class="bc-assistant-controls">
-                    <button class="bc-assistant-minimize" type="button" title="Zminimalizuj">
+                    <button class="bc-assistant-minimize" title="Zminimalizuj">
                         <i class="fas fa-minus"></i>
                     </button>
-                    <button class="bc-assistant-close" type="button" title="Zamknij">
+                    <button class="bc-assistant-close" title="Zamknij">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -124,7 +131,7 @@
             inputContainer.className = 'bc-assistant-input-container';
             inputContainer.innerHTML = `
                 <textarea class="bc-assistant-input" placeholder="Wpisz swoje pytanie..."></textarea>
-                <button class="bc-assistant-send" type="button" title="Wyślij">
+                <button class="bc-assistant-send" title="Wyślij">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             `;
@@ -148,39 +155,28 @@
             this.minimizeButton = this.wrapper.querySelector('.bc-assistant-minimize');
         }
         
+        // Create enhanced tap area for better mobile interaction
+        createEnhancedTapArea() {
+            const tapArea = document.createElement('div');
+            tapArea.className = 'bc-tap-area';
+            
+            // Add the tap area to the bubble
+            this.bubble.appendChild(tapArea);
+        }
+        
         // Set up all event listeners
         setupEvents() {
-            // Use direct handler methods with bound context to avoid issues
-            // Bubble handlers
-            this.bubbleClickHandler = this.handleBubbleClick.bind(this);
-            this.bubble.addEventListener('click', this.bubbleClickHandler);
-            this.bubble.addEventListener('touchend', this.bubbleClickHandler);
-            
-            // Close button handlers
-            this.closeButtonHandler = this.handleCloseClick.bind(this);
-            if (this.closeButton) {
-                this.closeButton.addEventListener('click', this.closeButtonHandler);
-                this.closeButton.addEventListener('touchend', this.closeButtonHandler);
-            }
-            
-            // Minimize button handlers
-            this.minimizeButtonHandler = this.handleMinimizeClick.bind(this);
-            if (this.minimizeButton) {
-                this.minimizeButton.addEventListener('click', this.minimizeButtonHandler);
-                this.minimizeButton.addEventListener('touchend', this.minimizeButtonHandler);
-            }
-            
-            // Send button handlers
-            this.sendButtonHandler = this.handleSendClick.bind(this);
-            if (this.sendButton) {
-                this.sendButton.addEventListener('click', this.sendButtonHandler);
-                this.sendButton.addEventListener('touchend', this.sendButtonHandler);
-            }
+            // Enhanced click handling with multiple approaches
+            this.setupClickHandlers();
             
             // Input field - handle Enter key
-            this.inputKeyHandler = this.handleInputKeyDown.bind(this);
             if (this.inputField) {
-                this.inputField.addEventListener('keydown', this.inputKeyHandler);
+                this.inputField.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
                 
                 // Auto-resize textarea
                 this.inputField.addEventListener('input', function() {
@@ -190,78 +186,141 @@
             }
             
             // Window resize event
-            this.resizeHandler = this.handleWindowResize.bind(this);
-            window.addEventListener('resize', this.resizeHandler);
+            window.addEventListener('resize', () => {
+                this.isMobile = this.checkIfMobile();
+                this.applyFixes();
+            });
             
-            // Stop propagation for all events inside the wrapper
-            this.wrapperClickHandler = this.handleWrapperClick.bind(this);
-            this.wrapper.addEventListener('click', this.wrapperClickHandler, true);
-            this.wrapper.addEventListener('touchstart', this.wrapperClickHandler, { passive: false, capture: true });
-            this.wrapper.addEventListener('touchmove', this.handleWrapperTouchMove.bind(this), { passive: false, capture: true });
+            // Check for other floating elements
+            this.checkForFloatingElements();
+            
+            // Add a MutationObserver to detect DOM changes that might add new floating elements
+            this.observeDOMChanges();
         }
         
-        // Event handler methods
-        handleBubbleClick(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.toggleWindow();
-            return false;
-        }
-        
-        handleCloseClick(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.closeWindow();
-            return false;
-        }
-        
-        handleMinimizeClick(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.closeWindow();
-            return false;
-        }
-        
-        handleSendClick(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.sendMessage();
-            return false;
-        }
-        
-        handleInputKeyDown(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
+        // Set up multiple event handlers for maximum compatibility
+        setupClickHandlers() {
+            // Tap area click handling
+            const tapArea = this.bubble.querySelector('.bc-tap-area');
+            if (tapArea) {
+                this.addMultipleEventListeners(tapArea, ['click', 'touchend'], (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.toggleWindow();
+                    return false;
+                });
+            }
+            
+            // Bubble click handling (direct)
+            this.addMultipleEventListeners(this.bubble, ['click', 'touchend'], (e) => {
                 e.preventDefault();
-                this.sendMessage();
+                e.stopPropagation();
+                this.toggleWindow();
                 return false;
+            });
+            
+            // Close button
+            if (this.closeButton) {
+                this.addMultipleEventListeners(this.closeButton, ['click', 'touchend'], (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.closeWindow();
+                    return false;
+                });
+            }
+            
+            // Minimize button
+            if (this.minimizeButton) {
+                this.addMultipleEventListeners(this.minimizeButton, ['click', 'touchend'], (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.closeWindow();
+                    return false;
+                });
+            }
+            
+            // Send button
+            if (this.sendButton) {
+                this.addMultipleEventListeners(this.sendButton, ['click', 'touchend'], (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.sendMessage();
+                    return false;
+                });
             }
         }
         
-        handleWindowResize() {
-            this.isMobile = this.checkIfMobile();
-            this.fixDisplay();
-        }
-        
-        handleWrapperClick(e) {
-            // Only stop propagation for clicks inside our components
-            if (e.target.closest('.bc-assistant-bubble, .bc-assistant-window')) {
-                e.stopPropagation();
+        // Helper to add multiple event listeners to an element
+        addMultipleEventListeners(element, events, handler) {
+            for (const eventName of events) {
+                element.addEventListener(eventName, handler, true);
             }
         }
         
-        handleWrapperTouchMove(e) {
-            // Prevent touch events from affecting page scrolling
-            if (e.target.closest('.bc-assistant-messages')) {
-                // Allow scrolling within messages container
-                e.stopPropagation();
-            } else if (e.target.closest('.bc-assistant-bubble, .bc-assistant-window')) {
-                // Prevent for other components
-                e.preventDefault();
-                e.stopPropagation();
+        // Check for other floating elements at the bottom of the page
+        checkForFloatingElements() {
+            // Common selectors for floating elements
+            const floatingElementSelectors = [
+                '[class*="chat"]', 
+                '[class*="widget"]', 
+                '[class*="bubble"]',
+                '[class*="float"]',
+                '[class*="popup"]',
+                '[class*="bot"]',
+                '[class*="messenger"]',
+                '[id*="chat"]',
+                '[id*="widget"]',
+                '[id*="bubble"]',
+                '[id*="bot"]',
+                '[id*="messenger"]',
+                '[style*="position: fixed"]'
+            ];
+            
+            // Find all floating elements
+            const floatingElements = document.querySelectorAll(floatingElementSelectors.join(','));
+            
+            // Check if any are positioned at the bottom of the screen
+            let hasConflictingElements = false;
+            
+            floatingElements.forEach(el => {
+                // Skip our own elements
+                if (el.closest('.bc-assistant-wrapper')) {
+                    return;
+                }
+                
+                const rect = el.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                
+                // Check if element is in the bottom 200px of the screen
+                if (rect.bottom > viewportHeight - 200) {
+                    hasConflictingElements = true;
+                }
+            });
+            
+            // Adjust position if needed
+            if (hasConflictingElements) {
+                this.wrapper.classList.add('adjust-for-floating-elements');
+            } else {
+                this.wrapper.classList.remove('adjust-for-floating-elements');
             }
         }
         
-        // Toggle chat window visibility
+        // Observe DOM changes to detect new floating elements
+        observeDOMChanges() {
+            // Create a MutationObserver to watch for DOM changes
+            const observer = new MutationObserver(() => {
+                // Check for floating elements whenever the DOM changes
+                this.checkForFloatingElements();
+            });
+            
+            // Start observing the document body for added/removed nodes
+            observer.observe(document.body, { 
+                childList: true, 
+                subtree: true 
+            });
+        }
+        
+        // Toggle chat window visibility with enhanced reliability
         toggleWindow() {
             if (this.isOpen) {
                 this.closeWindow();
@@ -274,11 +333,13 @@
         openWindow() {
             this.isOpen = true;
             
-            // Force display style with !important equivalent
-            // Set the style properties directly rather than using style.display
+            // Force display style with !important-like priority
             this.window.style.setProperty('display', 'flex', 'important');
-            this.window.style.setProperty('opacity', '1', 'important');
             this.window.style.setProperty('visibility', 'visible', 'important');
+            this.window.style.setProperty('opacity', '1', 'important');
+            
+            // Add transition class
+            this.window.classList.add('bc-fade-in');
             
             // Focus input field
             if (this.inputField) {
@@ -287,12 +348,20 @@
             
             // Scroll to latest message
             this.scrollToBottom();
+            
+            // Add class to document body to fix scrolling issues
+            document.body.classList.add('bc-assistant-open');
+            document.documentElement.classList.add('bc-assistant-open');
         }
         
         // Close chat window
         closeWindow() {
             this.isOpen = false;
             this.window.style.setProperty('display', 'none', 'important');
+            
+            // Remove body class
+            document.body.classList.remove('bc-assistant-open');
+            document.documentElement.classList.remove('bc-assistant-open');
         }
         
         // Add a message to the chat
@@ -300,7 +369,7 @@
             // Create message object
             const message = {
                 role,
-                content: content || '',
+                content,
                 timestamp: new Date()
             };
             
@@ -314,7 +383,7 @@
             // Create message content element
             const contentElem = document.createElement('div');
             contentElem.className = 'bc-message-content';
-            contentElem.innerHTML = this.formatMessage(content || '');
+            contentElem.innerHTML = this.formatMessage(content);
             
             // Add timestamp
             const timestamp = document.createElement('div');
@@ -334,7 +403,11 @@
         
         // Format message with markdown
         formatMessage(text) {
-            if (!text) return '';
+            // Check if text is undefined or null
+            if (!text) {
+                console.warn('BC Assistant: Attempted to format undefined text');
+                return ''; // Return empty string if text is undefined
+            }
             
             return text
                 .replace(/\n/g, '<br>')
@@ -463,72 +536,82 @@
             }
         }
         
-        // Fix all display issues - combined solutions for all browsers
-        fixDisplay() {
-            // Set high z-index for all components
-            const highZIndex = '9999999';
+        // Apply fixes for known issues and conflicts
+        applyFixes() {
+            // Fix positioning
+            this.fixPositioning();
             
-            this.wrapper.style.setProperty('z-index', highZIndex, 'important');
-            this.wrapper.style.setProperty('position', 'fixed', 'important');
-            this.wrapper.style.setProperty('display', 'block', 'important');
-            this.wrapper.style.setProperty('visibility', 'visible', 'important');
-            this.wrapper.style.setProperty('opacity', '1', 'important');
-            this.wrapper.style.setProperty('pointer-events', 'auto', 'important');
+            // Fix z-index issues
+            this.fixZIndex();
             
-            // Apply position based on configuration
-            const position = this.config.position || 'bottom-right';
-            
-            // Apply position
-            if (position === 'bottom-right') {
-                this.wrapper.style.setProperty('bottom', this.isMobile ? '100px' : '20px', 'important');
-                this.wrapper.style.setProperty('right', '20px', 'important');
-                this.wrapper.style.setProperty('left', 'auto', 'important');
-                this.wrapper.style.setProperty('top', 'auto', 'important');
-            } else if (position === 'bottom-left') {
-                this.wrapper.style.setProperty('bottom', this.isMobile ? '100px' : '20px', 'important');
-                this.wrapper.style.setProperty('left', '20px', 'important');
-                this.wrapper.style.setProperty('right', 'auto', 'important');
-                this.wrapper.style.setProperty('top', 'auto', 'important');
-            } else if (position === 'top-right') {
-                this.wrapper.style.setProperty('top', '20px', 'important');
-                this.wrapper.style.setProperty('right', '20px', 'important');
-                this.wrapper.style.setProperty('bottom', 'auto', 'important');
-                this.wrapper.style.setProperty('left', 'auto', 'important');
-            } else if (position === 'top-left') {
-                this.wrapper.style.setProperty('top', '20px', 'important');
-                this.wrapper.style.setProperty('left', '20px', 'important');
-                this.wrapper.style.setProperty('bottom', 'auto', 'important');
-                this.wrapper.style.setProperty('right', 'auto', 'important');
+            // Fix mobile-specific issues
+            if (this.isMobile) {
+                this.fixMobileDisplay();
             }
             
-            // Fix bubble display
-            if (this.bubble) {
-                this.bubble.style.setProperty('display', 'flex', 'important');
-                this.bubble.style.setProperty('visibility', 'visible', 'important');
-                this.bubble.style.setProperty('opacity', '1', 'important');
-                this.bubble.style.setProperty('align-items', 'center', 'important');
-                this.bubble.style.setProperty('justify-content', 'center', 'important');
-                this.bubble.style.setProperty('z-index', highZIndex, 'important');
-                this.bubble.style.setProperty('cursor', 'pointer', 'important');
+            // Apply browser-specific fixes
+            this.applyBrowserSpecificFixes();
+            
+            // Check for other floating elements again
+            this.checkForFloatingElements();
+        }
+        
+        // Fix positioning
+        fixPositioning() {
+            // Get position from config
+            const position = this.config.position || 'bottom-right';
+            
+            // Mobile positioning
+            if (this.isMobile) {
+                // Clear inline styles first
+                this.wrapper.style.removeProperty('top');
+                this.wrapper.style.removeProperty('left');
+                this.wrapper.style.removeProperty('right');
                 
-                if (this.isMobile) {
-                    this.bubble.style.setProperty('width', '50px', 'important');
-                    this.bubble.style.setProperty('height', '50px', 'important');
-                    this.bubble.style.setProperty('font-size', '20px', 'important');
+                // Set bottom position higher on mobile
+                this.wrapper.style.setProperty('bottom', '140px', 'important');
+                
+                // Left/right positioning based on config
+                if (position.includes('left')) {
+                    this.wrapper.style.setProperty('left', '20px', 'important');
+                    this.wrapper.style.setProperty('right', 'auto', 'important');
+                } else {
+                    this.wrapper.style.setProperty('right', '20px', 'important');
+                    this.wrapper.style.setProperty('left', 'auto', 'important');
+                }
+            } else {
+                // Desktop positioning
+                if (position === 'bottom-right') {
+                    this.wrapper.style.setProperty('bottom', '20px', 'important');
+                    this.wrapper.style.setProperty('right', '20px', 'important');
+                    this.wrapper.style.setProperty('left', 'auto', 'important');
+                    this.wrapper.style.setProperty('top', 'auto', 'important');
+                } else if (position === 'bottom-left') {
+                    this.wrapper.style.setProperty('bottom', '20px', 'important');
+                    this.wrapper.style.setProperty('left', '20px', 'important');
+                    this.wrapper.style.setProperty('right', 'auto', 'important');
+                    this.wrapper.style.setProperty('top', 'auto', 'important');
+                } else if (position === 'top-right') {
+                    this.wrapper.style.setProperty('top', '20px', 'important');
+                    this.wrapper.style.setProperty('right', '20px', 'important');
+                    this.wrapper.style.setProperty('bottom', 'auto', 'important');
+                    this.wrapper.style.setProperty('left', 'auto', 'important');
+                } else if (position === 'top-left') {
+                    this.wrapper.style.setProperty('top', '20px', 'important');
+                    this.wrapper.style.setProperty('left', '20px', 'important');
+                    this.wrapper.style.setProperty('bottom', 'auto', 'important');
+                    this.wrapper.style.setProperty('right', 'auto', 'important');
                 }
             }
             
-            // Set window styles based on position
+            // Set window position based on position setting
             if (this.window) {
-                this.window.style.setProperty('z-index', highZIndex, 'important');
-                
-                // Default window positioning
-                if (position.includes('right')) {
-                    this.window.style.setProperty('right', '0', 'important');
-                    this.window.style.setProperty('left', 'auto', 'important');
-                } else {
+                if (position.includes('left')) {
                     this.window.style.setProperty('left', '0', 'important');
                     this.window.style.setProperty('right', 'auto', 'important');
+                } else {
+                    this.window.style.setProperty('right', '0', 'important');
+                    this.window.style.setProperty('left', 'auto', 'important');
                 }
                 
                 if (position.includes('top')) {
@@ -538,143 +621,132 @@
                     this.window.style.setProperty('bottom', '70px', 'important');
                     this.window.style.setProperty('top', 'auto', 'important');
                 }
-                
-                // Mobile adjustments
-                if (this.isMobile) {
-                    this.window.style.setProperty('width', '85vw', 'important');
-                    this.window.style.setProperty('max-width', '350px', 'important');
-                    this.window.style.setProperty('height', '70vh', 'important');
-                }
+            }
+        }
+        
+        // Fix z-index issues
+        fixZIndex() {
+            // Use maximum valid z-index
+            const highZIndex = 2147483647;
+            
+            this.wrapper.style.setProperty('z-index', highZIndex, 'important');
+            
+            if (this.container) {
+                this.container.style.setProperty('z-index', highZIndex, 'important');
             }
             
-            // Browser-specific fixes
-            this.applyBrowserSpecificFixes();
+            if (this.bubble) {
+                this.bubble.style.setProperty('z-index', highZIndex, 'important');
+            }
+            
+            if (this.window) {
+                this.window.style.setProperty('z-index', highZIndex, 'important');
+            }
+        }
+        
+        // Fix mobile-specific display issues
+        fixMobileDisplay() {
+            // Ensure bubble is properly sized and visible
+            if (this.bubble) {
+                this.bubble.style.setProperty('width', '50px', 'important');
+                this.bubble.style.setProperty('height', '50px', 'important');
+                this.bubble.style.setProperty('display', 'flex', 'important');
+                this.bubble.style.setProperty('align-items', 'center', 'important');
+                this.bubble.style.setProperty('justify-content', 'center', 'important');
+                this.bubble.style.setProperty('visibility', 'visible', 'important');
+                this.bubble.style.setProperty('opacity', '1', 'important');
+                this.bubble.style.setProperty('border', '2px solid #fff', 'important');
+                this.bubble.style.setProperty('box-shadow', '0 2px 10px rgba(0,0,0,0.3)', 'important');
+            }
+            
+            // Adjust window size for mobile
+            if (this.window) {
+                this.window.style.setProperty('width', '85vw', 'important');
+                this.window.style.setProperty('height', '70vh', 'important');
+                this.window.style.setProperty('max-width', '350px', 'important');
+            }
         }
         
         // Apply browser-specific fixes
         applyBrowserSpecificFixes() {
             const isFirefox = navigator.userAgent.indexOf('Firefox') !== -1;
+            const isEdge = /Edge/.test(navigator.userAgent);
             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
             
+            // Firefox-specific fixes
             if (isFirefox) {
-                // Firefox-specific fixes
-                if (this.wrapper) {
+                this.wrapper.style.setProperty('transform', 'none', 'important');
+                this.bubble.style.setProperty('transform', 'none', 'important');
+                
+                // Mobile Firefox needs special handling
+                if (this.isMobile) {
                     this.wrapper.style.setProperty('min-width', '50px', 'important');
                     this.wrapper.style.setProperty('min-height', '50px', 'important');
                     this.wrapper.style.setProperty('clip-path', 'none', 'important');
-                    this.wrapper.style.setProperty('transform', 'none', 'important');
-                }
-                
-                if (this.bubble) {
-                    this.bubble.style.setProperty('transform', 'none', 'important');
                     this.bubble.style.setProperty('clip-path', 'none', 'important');
-                    
-                    // Add extra tap area for Firefox mobile
-                    if (this.isMobile) {
-                        const tapArea = document.createElement('div');
-                        tapArea.style.setProperty('position', 'absolute', 'important');
-                        tapArea.style.setProperty('width', '70px', 'important');
-                        tapArea.style.setProperty('height', '70px', 'important');
-                        tapArea.style.setProperty('top', '-10px', 'important');
-                        tapArea.style.setProperty('left', '-10px', 'important');
-                        tapArea.style.setProperty('right', '-10px', 'important');
-                        tapArea.style.setProperty('bottom', '-10px', 'important');
-                        tapArea.style.setProperty('z-index', '1', 'important');
-                        
-                        // Ensure bubble has position relative
-                        this.bubble.style.setProperty('position', 'relative', 'important');
-                        
-                        // Only add if not already present
-                        if (!this.bubble.querySelector('.bc-tap-area')) {
-                            tapArea.className = 'bc-tap-area';
-                            this.bubble.appendChild(tapArea);
-                            
-                            // Add event listeners to the tap area
-                            tapArea.addEventListener('click', this.bubbleClickHandler);
-                            tapArea.addEventListener('touchend', this.bubbleClickHandler);
-                        }
-                    }
                 }
             }
             
-            if (isSafari || isIOS) {
-                // Safari and iOS fixes
-                if (this.wrapper) {
-                    this.wrapper.style.setProperty('-webkit-tap-highlight-color', 'rgba(0,0,0,0)', 'important');
-                    this.wrapper.style.setProperty('touch-action', 'auto', 'important');
-                }
-                
-                if (this.bubble) {
-                    this.bubble.style.setProperty('-webkit-user-select', 'none', 'important');
-                    this.bubble.style.setProperty('user-select', 'none', 'important');
-                }
-                
-                // Add specific touch handling for iOS
-                if (isIOS && this.bubble) {
-                    // Replace all event listeners with iOS-specific ones
-                    this.bubble.removeEventListener('click', this.bubbleClickHandler);
-                    this.bubble.removeEventListener('touchend', this.bubbleClickHandler);
-                    
-                    // iOS-specific handler
-                    const iosTouchHandler = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setTimeout(() => this.toggleWindow(), 10);
-                        return false;
-                    };
-                    
-                    this.bubble.addEventListener('touchstart', iosTouchHandler, { passive: false });
-                }
+            // Edge-specific fixes
+            if (isEdge) {
+                // Force hardware acceleration
+                this.wrapper.style.setProperty('transform', 'translateZ(0)', 'important');
+                this.bubble.style.setProperty('transform', 'translateZ(0)', 'important');
             }
             
-            // Apply Edge-specific fixes
-            if (/Edge/.test(navigator.userAgent)) {
-                if (this.wrapper) {
-                    this.wrapper.style.setProperty('transform', 'translateZ(0)', 'important');
-                }
-                
-                if (this.bubble) {
-                    this.bubble.style.setProperty('transform', 'translateZ(0)', 'important');
-                }
+            // Safari-specific fixes
+            if (isSafari) {
+                this.wrapper.style.setProperty('-webkit-tap-highlight-color', 'rgba(0,0,0,0)', 'important');
+                this.bubble.style.setProperty('-webkit-user-select', 'none', 'important');
+                this.bubble.style.setProperty('user-select', 'none', 'important');
             }
         }
         
         // Ensure visibility (called periodically)
         ensureVisibility() {
-            if (!this.wrapper) return;
-            
-            this.wrapper.style.setProperty('display', 'block', 'important');
-            this.wrapper.style.setProperty('visibility', 'visible', 'important');
-            this.wrapper.style.setProperty('opacity', '1', 'important');
-            
-            if (this.bubble) {
-                this.bubble.style.setProperty('display', 'flex', 'important');
-                this.bubble.style.setProperty('visibility', 'visible', 'important');
-                this.bubble.style.setProperty('opacity', '1', 'important');
+            if (this.wrapper) {
+                this.wrapper.style.setProperty('display', 'block', 'important');
+                this.wrapper.style.setProperty('visibility', 'visible', 'important');
+                this.wrapper.style.setProperty('opacity', '1', 'important');
+                this.wrapper.style.setProperty('position', 'fixed', 'important');
+                
+                // Force all child elements to be visible too
+                if (this.bubble) {
+                    this.bubble.style.setProperty('display', 'flex', 'important');
+                    this.bubble.style.setProperty('visibility', 'visible', 'important');
+                    this.bubble.style.setProperty('opacity', '1', 'important');
+                }
+                
+                // Only make window visible if it's supposed to be open
+                if (this.window) {
+                    if (this.isOpen) {
+                        this.window.style.setProperty('display', 'flex', 'important');
+                        this.window.style.setProperty('visibility', 'visible', 'important');
+                        this.window.style.setProperty('opacity', '1', 'important');
+                    } else {
+                        this.window.style.setProperty('display', 'none', 'important');
+                    }
+                }
+                
+                // Re-apply browser-specific fixes
+                this.applyBrowserSpecificFixes();
+                
+                // Check for other floating elements
+                this.checkForFloatingElements();
             }
-            
-            if (this.window && this.isOpen) {
-                this.window.style.setProperty('display', 'flex', 'important');
-                this.window.style.setProperty('visibility', 'visible', 'important');
-                this.window.style.setProperty('opacity', '1', 'important');
-            }
-            
-            // Re-apply browser-specific fixes
-            this.applyBrowserSpecificFixes();
         }
     }
     
     // Initialize the assistant once DOM is loaded
     function initBCAssistant() {
-        // Only initialize once
-        if (bcAssistantInstance) {
-            console.log("BC Assistant already initialized");
-            return;
-        }
-        
         try {
-            // Make sure welcome message is set
+            // Check for existing instance first
+            if (bcAssistantInstance) {
+                console.log("BC Assistant already initialized");
+                return;
+            }
+            
+            // Initialize welcome message if needed
             if (typeof window.bcAssistantWelcomeMessage === 'undefined' || !window.bcAssistantWelcomeMessage) {
                 window.bcAssistantWelcomeMessage = 'Witaj! W czym mogę pomóc?';
             }
@@ -684,13 +756,7 @@
                 window.bcAssistantData.welcomeMessage = window.bcAssistantWelcomeMessage;
             }
             
-            // Remove any existing instances
-            const existingWrapper = document.querySelector('.bc-assistant-wrapper');
-            if (existingWrapper) {
-                existingWrapper.remove();
-            }
-            
-            // Create the assistant
+            // Create new instance
             bcAssistantInstance = new BCAssistant(bcConfig);
             window.bcAssistant = bcAssistantInstance;
             console.log("BC Assistant initialized successfully");
@@ -703,108 +769,10 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initBCAssistant);
     } else {
-        // Document already loaded, initialize now
         initBCAssistant();
     }
     
-    // Add special initialization for mobile devices
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add a slight delay for mobile devices to ensure all resources are loaded
-        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-            setTimeout(function() {
-                if (!bcAssistantInstance) {
-                    console.log("BC Assistant: Mobile-specific initialization");
-                    initBCAssistant();
-                }
-                
-                // Force visibility check for mobile
-                if (bcAssistantInstance) {
-                    bcAssistantInstance.ensureVisibility();
-                }
-            }, 1000);
-        }
-    });
-    
-    // Make the initBCAssistant function globally available
-    window.initBCAssistant = initBCAssistant;
+    // Also initialize on window load for good measure
+    window.addEventListener('load', initBCAssistant);
     
 })(jQuery);
-
-// Add inline CSS fixes - these will take precedence over stylesheet rules
-document.addEventListener('DOMContentLoaded', function() {
-    // Create a style element for critical CSS fixes
-    const styleEl = document.createElement('style');
-    styleEl.id = 'bc-assistant-critical-fixes';
-    styleEl.innerHTML = `
-        /* Critical fixes that override any other styles */
-        .bc-assistant-wrapper {
-            position: fixed !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            z-index: 9999999 !important;
-            pointer-events: auto !important;
-        }
-        
-        .bc-assistant-bubble {
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            align-items: center !important;
-            justify-content: center !important;
-            cursor: pointer !important;
-            z-index: 9999999 !important;
-        }
-        
-        @media (max-width: 767px) {
-            .bc-assistant-wrapper {
-                bottom: 100px !important;
-            }
-            
-            .bc-assistant-bubble {
-                width: 50px !important;
-                height: 50px !important;
-            }
-            
-            .bc-assistant-window {
-                width: 85vw !important;
-                max-width: 350px !important;
-                height: 70vh !important;
-            }
-        }
-        
-        /* Firefox mobile fixes */
-        @-moz-document url-prefix() {
-            @media (max-width: 767px) {
-                .bc-assistant-wrapper {
-                    min-width: 50px !important;
-                    min-height: 50px !important;
-                    clip: auto !important;
-                    pointer-events: auto !important;
-                    transform: none !important;
-                }
-                
-                .bc-assistant-bubble {
-                    transform: none !important;
-                    clip-path: none !important;
-                }
-            }
-        }
-        
-        /* iOS fixes */
-        @supports (-webkit-touch-callout: none) {
-            .bc-assistant-wrapper {
-                pointer-events: auto !important;
-            }
-            
-            .bc-assistant-bubble {
-                cursor: pointer !important;
-                -webkit-user-select: none !important;
-                user-select: none !important;
-            }
-        }
-    `;
-    
-    // Add the style element to the head
-    document.head.appendChild(styleEl);
-});

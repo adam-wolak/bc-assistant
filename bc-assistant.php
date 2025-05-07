@@ -40,6 +40,9 @@ require_once BC_ASSISTANT_PATH . 'includes/migrations.php';
 // Load diagnostic tool
 require_once BC_ASSISTANT_PATH . 'includes/diagnostic.php';
 
+// Load compatibility CSS fixes
+require_once BC_ASSISTANT_PATH . 'includes/compatibility-css.php';
+
 /**
  * Load environment variables from .env file (suppress warnings)
  */
@@ -238,12 +241,13 @@ public function __construct() {
  */
 public function enqueue_assets() {
     // Load Font Awesome if needed
-    wp_enqueue_style(
-        'font-awesome',
-        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-        array(),
-        '5.15.4'
-    );
+wp_enqueue_style(
+    'font-awesome',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+    array(),
+    '5.15.4'
+);
+
     
     // Enqueue main styles
     wp_enqueue_style(
@@ -261,16 +265,7 @@ public function enqueue_assets() {
         BC_ASSISTANT_VERSION . '.' . time(), // Add timestamp to force refresh
         true
     );
-    
-    // ADD THIS NEW CODE: Enqueue emergency fix script
-    wp_enqueue_script(
-        'bc-assistant-emergency-fix',
-        BC_ASSISTANT_URL . 'assets/js/emergency-fix.js',
-        array('jquery', 'bc-assistant-script'),
-        BC_ASSISTANT_VERSION . '.' . time(),
-        true
-    );
-    
+
     // Get configuration
     $config = BC_Assistant_Config::get_all();
     
@@ -435,20 +430,6 @@ function bc_assistant_api_key_notice() {
     <?php
 }
 
-/**
- * Add defer attribute to JS files
- */
-function bc_assistant_defer_scripts($tag, $handle, $src) {
-    $defer_scripts = array(
-        'bc-assistant-script',
-    );
-    
-    if (in_array($handle, $defer_scripts)) {
-        return str_replace(' src', ' defer src', $tag);
-    }
-    
-    return $tag;
-}
 /**
  * Add defer attribute to JS files
  */

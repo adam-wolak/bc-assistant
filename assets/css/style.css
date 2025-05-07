@@ -1,22 +1,20 @@
 /**
- * BC Assistant - Complete CSS Fix
- * This CSS resolves all mobile display issues across browsers
+ * BC Assistant - Complete CSS
+ * Includes fixes for cross-browser compatibility
  */
 
 /* 
- * Core structure with high specificity selectors
+ * Core structure - using high specificity selectors
  */
 .bc-assistant-wrapper {
     position: fixed !important;
-    z-index: 9999999 !important;
+    z-index: 2147483647 !important; /* Maximum z-index value */
     box-sizing: border-box !important;
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;
     -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
-    isolation: isolate !important;
-    contain: content !important;
 }
 
 /* Position variations */
@@ -75,13 +73,24 @@
     opacity: 1 !important;
     color: white !important;
     font-size: 24px !important;
-    position: relative !important;
-    -webkit-user-select: none !important;
-    user-select: none !important;
+    position: relative !important; /* Required for tap area */
+    transform: none !important; /* Prevents transform issues */
 }
 
 .bc-assistant-wrapper .bc-assistant-bubble:hover {
     transform: scale(1.1) !important;
+}
+
+/* Enhanced tap area for better touch detection */
+.bc-assistant-wrapper .bc-tap-area {
+    position: absolute !important;
+    top: -20px !important;
+    left: -20px !important;
+    right: -20px !important;
+    bottom: -20px !important;
+    z-index: 2 !important;
+    cursor: pointer !important;
+    background-color: transparent !important;
 }
 
 /* Chat window */
@@ -163,6 +172,7 @@
     display: flex !important;
     flex-direction: column !important;
     scroll-behavior: smooth !important;
+    -webkit-overflow-scrolling: touch !important; /* Better scrolling on iOS */
 }
 
 /* Message styling */
@@ -346,7 +356,7 @@
     border-radius: 3px !important;
 }
 
-/* Mobile styles - applied to all devices under 767px */
+/* Mobile styles */
 @media (max-width: 767px) {
     /* Forceful mobile positioning and visibility */
     .bc-assistant-wrapper {
@@ -354,17 +364,17 @@
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
-        z-index: 9999999 !important; /* Even higher z-index for mobile */
+        z-index: 2147483647 !important; /* Maximum z-index value */
         pointer-events: auto !important;
         touch-action: auto !important;
         -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
-        bottom: 100px !important; /* Higher position on mobile */
+        bottom: 140px !important; /* Higher position on mobile for better visibility */
         right: 20px !important;
         left: auto !important;
         top: auto !important;
     }
     
-    /* Ensure bubble is visible */
+    /* Ensure bubble is visible and properly sized */
     .bc-assistant-wrapper .bc-assistant-bubble {
         width: 50px !important;
         height: 50px !important;
@@ -377,7 +387,14 @@
         border: 2px solid #fff !important; /* Add border for visibility */
         box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important; /* Stronger shadow for visibility */
         transform: none !important; /* Prevent transforms from breaking visibility */
-        transition: none !important; /* Disable transitions that might cause issues */
+    }
+    
+    /* Adjust tap area for better touch on mobile */
+    .bc-assistant-wrapper .bc-tap-area {
+        top: -25px !important;
+        left: -25px !important;
+        right: -25px !important;
+        bottom: -25px !important;
     }
     
     /* Window sizing for mobile */
@@ -405,16 +422,6 @@
     }
 }
 
-/* Extra tap area for mobile devices to help with touch targets */
-.bc-assistant-wrapper .bc-assistant-bubble .bc-tap-area {
-    position: absolute !important;
-    top: -10px !important;
-    left: -10px !important;
-    right: -10px !important;
-    bottom: -10px !important;
-    z-index: 1 !important;
-}
-
 /* Firefox-specific fixes */
 @-moz-document url-prefix() {
     @media (max-width: 767px) {
@@ -430,6 +437,16 @@
         .bc-assistant-wrapper .bc-assistant-bubble {
             transform: none !important;
             clip-path: none !important;
+        }
+        
+        .bc-assistant-wrapper .bc-assistant-bubble::before {
+            content: "" !important;
+            position: absolute !important;
+            top: -20px !important;
+            right: -20px !important;
+            bottom: -20px !important;
+            left: -20px !important;
+            z-index: 1 !important;
         }
     }
 }
@@ -480,7 +497,7 @@ html.bc-assistant-open {
 /* Portrait orientation specific fixes */
 @media (max-width: 767px) and (orientation: portrait) {
     .bc-assistant-wrapper {
-        bottom: 120px !important;
+        bottom: 140px !important;
     }
     
     .bc-assistant-wrapper .bc-assistant-window {
@@ -491,7 +508,7 @@ html.bc-assistant-open {
 /* Landscape orientation specific fixes */
 @media (max-width: 767px) and (orientation: landscape) {
     .bc-assistant-wrapper {
-        bottom: 80px !important;
+        bottom: 100px !important;
         right: 20px !important;
     }
     
@@ -575,20 +592,11 @@ html.bc-assistant-open {
 }
 
 /* Fix for z-index stacking context */
-.bc-assistant-wrapper,
 .bc-assistant-wrapper * {
-    transform: translateZ(0) !important;
+    z-index: auto !important;
 }
 
-/* Special fix for Firefox Mobile */
-@media (max-width: 767px) and (-moz-touch-enabled: 1) {
-    .bc-assistant-bubble::before {
-        content: "" !important;
-        position: absolute !important;
-        top: -20px !important;
-        right: -20px !important;
-        bottom: -20px !important;
-        left: -20px !important;
-        z-index: 1 !important;
-    }
+/* Fix for elements that appear at the bottom of the page - prevents overlapping */
+.bc-assistant-wrapper.adjust-for-floating-elements {
+    bottom: 200px !important; /* Extra height to avoid other elements */
 }
