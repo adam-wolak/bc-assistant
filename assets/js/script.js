@@ -1,778 +1,909 @@
 /**
- * BC Assistant - Enhanced Mobile Implementation
- * This script includes all necessary fixes for cross-browser compatibility
+ * BC Assistant - Modern Implementation with Shadow DOM
+ * Version 2.0.0
  */
 
-(function($) {
-    "use strict";
+class BCAssistantWidget extends HTMLElement {
+    constructor() {
+        super();
+        
+        // Create shadow root for style encapsulation
+        this.attachShadow({ mode: 'open' });
+        
+        // Initialize state
+        this.state = {
+            messages: [],
+            isOpen: false,
+            isTyping: false,
+            threadId: localStorage.getItem('bc_assistant_thread_id') || ''
+        };
+        
+        // Get configuration
+        this.config = window.bcAssistantData || {
+            title: 'BC Assistant',
+            position: 'bottom-right',
+            theme: 'light',
+            welcomeMessage: 'How can I help you?',
+            apiEndpoint: '/wp-admin/admin-ajax.php',
+            action: 'bc_assistant_send_message',
+            nonce: ''
+        };
+        
+        // Initialize component
+        this.init();
+    }
     
-    // Configuration object - will be populated from WordPress data
-    const bcConfig = window.bcAssistantData || {
-        model: "gpt-4o",
-        apiEndpoint: "/wp-admin/admin-ajax.php",
-        action: "bc_assistant_send_message",
-        position: "bottom-right",
-        title: "Asystent BC",
-        initialMessage: "Witaj! W czym mogę pomóc?",
-        nonce: ""
-    };
+    /**
+     * Initialize component
+     */
+    init() {
+        // Render initial UI
+        this.render();
+        
+        // Set up event listeners
+        this.addEventListeners();
+        
+        // Add welcome message
+        this.addMessage('assistant', this.getWelcomeMessage());
+        
+        // Log initialization in debug mode
+        if (this.config.debug) {
+            console.log('BC Assistant initialized with model:', this.config.model);
+        }
+    }
     
-    // Store single instance reference
-    let bcAssistantInstance = null;
-    
-    // Main BC Assistant class
-    class BCAssistant {
-        constructor(config) {
-            // Store configuration
-            this.config = config;
-            this.messages = [];
-            this.isOpen = false;
-            this.isTyping = false;
-            this.threadId = localStorage.getItem('bc_assistant_thread_id') || '';
-            this.isMobile = this.checkIfMobile();
-            
-            // Initialize the assistant
-            this.init();
-            
-            // Log initialization for debugging
-            if (config.debug) {
-                console.log("BC Assistant initialized with model:", this.config.model);
-                console.log("Device type:", this.isMobile ? "Mobile" : "Desktop");
-            }
+    /**
+     * Get welcome message from config or global variable
+     */
+    getWelcomeMessage() {
+        // Try from config
+        if (this.config.welcomeMessage) {
+            return this.config.welcomeMessage;
         }
         
-        // Check if current device is mobile
-        checkIfMobile() {
-            return window.innerWidth < 768 || 
-                   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        // Try from global variable
+        if (typeof window.bcAssistantWelcomeMessage !== 'undefined') {
+            return window.bcAssistantWelcomeMessage;
         }
         
-        // Initialize the assistant
-        init() {
-            // Create the DOM elements
-            this.createDOM();
-            
-            // Add event listeners
-            this.setupEvents();
-            
-            // Get welcome message from config or global variable or default
-            let welcomeMessage = this.config.welcomeMessage;
-            
-            // If not in config, try global variable
-            if (!welcomeMessage && typeof window.bcAssistantWelcomeMessage !== 'undefined') {
-                welcomeMessage = window.bcAssistantWelcomeMessage;
-            }
-            
-            // If still not found, use default
-            if (!welcomeMessage) {
-                welcomeMessage = 'Witaj! W czym mogę pomóc?';
-                console.log('BC Assistant: Using default welcome message');
-            }
-            
-            // Add welcome message
-            this.addMessage('assistant', welcomeMessage);
-            
-            // Apply fixes for potential conflicts
-            this.applyFixes();
-            
-            // Set up periodic visibility check
-            setInterval(() => this.ensureVisibility(), 2000);
-        }
+        // Default fallback
+        return 'Hello! How can I help you?';
+    }
+    
+    /**
+     * Render component
+     */
+    render() {
+        // Set position as attribute for CSS
+        this.setAttribute('position', this.config.position || 'bottom-right');
         
-        // Create all DOM elements
-        createDOM() {
-            // Create wrapper (highest level container)
-            this.wrapper = document.createElement('div');
-            this.wrapper.className = 'bc-assistant-wrapper';
-            this.wrapper.setAttribute('data-position', this.config.position);
+        // Set theme as attribute for CSS
+        this.setAttribute('theme', this.config.theme || 'light');
+        
+        // Inject styles and HTML template
+        this.shadowRoot.innerHTML = `
+            <style>
+                /* Base styles */
+                :host {
+                    position: fixed;
+                    z-index: 999999;
+                    display: block;
+                    box-sizing: border-box;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+                    line-height: 1.5;
+                    font-size: 14px;
+                }
+                
+                /* Position variations */
+                :host([position="bottom-right"]) {
+                    right: 20px;
+                    bottom: 20px;
+                }
+                
+                :host([position="bottom-left"]) {
+                    left: 20px;
+                    bottom: 20px;
+                }
+                
+                :host([position="top-right"]) {
+                    right: 20px;
+                    top: 20px;
+                }
+                
+                :host([position="top-left"]) {
+                    left: 20px;
+                    top: 20px;
+                }
+                
+                /* Container */
+                .container {
+                    position: relative;
+                }
+                
+                /* Bubble button */
+                .bubble {
+                    width: 60px;
+                    height: 60px;
+                    border-radius: 50%;
+                    background-color: #A67C52;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+                    transition: transform 0.3s ease;
+                    color: white;
+                    font-size: 24px;
+                }
+                
+                .bubble:hover {
+                    transform: scale(1.1);
+                }
+                
+                /* Chat window */
+                .window {
+                    position: absolute;
+                    bottom: 70px;
+                    right: 0;
+                    width: 350px;
+                    height: 500px;
+                    background-color: #fff;
+                    border-radius: 10px;
+                    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+                    display: none;
+                    flex-direction: column;
+                    overflow: hidden;
+                }
+                
+                :host([position="bottom-left"]) .window {
+                    right: auto;
+                    left: 0;
+                }
+                
+                :host([position="top-right"]) .window {
+                    bottom: auto;
+                    top: 70px;
+                }
+                
+                :host([position="top-left"]) .window {
+                    bottom: auto;
+                    top: 70px;
+                    right: auto;
+                    left: 0;
+                }
+                
+                /* Chat header */
+                .header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 15px;
+                    background-color: #A67C52;
+                    color: #fff;
+                    border-top-left-radius: 10px;
+                    border-top-right-radius: 10px;
+                }
+                
+                .title {
+                    font-weight: bold;
+                    font-size: 16px;
+                }
+                
+                .controls {
+                    display: flex;
+                    align-items: center;
+                }
+                
+                .minimize,
+                .close {
+                    background: none;
+                    border: none;
+                    color: #fff;
+                    font-size: 16px;
+                    cursor: pointer;
+                    padding: 0;
+                    margin-left: 10px;
+                    line-height: 1;
+                }
+                
+                /* Messages container */
+                .messages {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 15px;
+                    background-color: #f5f5f5;
+                    display: flex;
+                    flex-direction: column;
+                    scroll-behavior: smooth;
+                }
+                
+                /* Message styling */
+                .message {
+                    margin-bottom: 15px;
+                    max-width: 80%;
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                .message-user {
+                    align-self: flex-end;
+                }
+                
+                .message-assistant {
+                    align-self: flex-start;
+                }
+                
+                .message-content {
+                    padding: 10px 15px;
+                    border-radius: 18px;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                    word-wrap: break-word;
+                    line-height: 1.4;
+                }
+                
+                .message-user .message-content {
+                    background-color: #A67C52;
+                    color: #fff;
+                    border-bottom-right-radius: 5px;
+                }
+                
+                .message-assistant .message-content {
+                    background-color: #fff;
+                    color: #333;
+                    border-bottom-left-radius: 5px;
+                }
+                
+                .message-timestamp {
+                    font-size: 12px;
+                    color: #888;
+                    margin-top: 5px;
+                    text-align: right;
+                }
+                
+                /* Input container */
+                .input-container {
+                    display: flex;
+                    padding: 10px;
+                    border-top: 1px solid #eee;
+                    background-color: #fff;
+                }
+                
+                .input {
+                    flex: 1;
+                    border: 1px solid #ddd;
+                    border-radius: 20px;
+                    padding: 10px 15px;
+                    font-size: 14px;
+                    resize: none;
+                    outline: none;
+                    min-height: 40px;
+                    max-height: 100px;
+                    overflow-y: auto;
+                    font-family: inherit;
+                }
+                
+                .input:focus {
+                    border-color: #A67C52;
+                    box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.1);
+                }
+                
+                .send {
+                    background-color: #A67C52;
+                    color: #fff;
+                    border: none;
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    margin-left: 10px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background-color 0.3s;
+                }
+                
+                .send:hover {
+                    background-color: #8D6848;
+                }
+                
+                /* Typing indicator */
+                .typing-indicator {
+                    margin-bottom: 10px;
+                }
+                
+                .typing-dots {
+                    display: flex;
+                    align-items: center;
+                }
+                
+                .typing-dot {
+                    width: 8px;
+                    height: 8px;
+                    margin: 0 2px;
+                    background-color: #A67C52;
+                    border-radius: 50%;
+                    display: inline-block;
+                    animation: typing 1.4s infinite ease-in-out both;
+                }
+                
+                .typing-dot:nth-child(2) {
+                    animation-delay: 0.2s;
+                }
+                
+                .typing-dot:nth-child(3) {
+                    animation-delay: 0.4s;
+                }
+                
+                @keyframes typing {
+                    0%, 80%, 100% {
+                        transform: scale(0.75);
+                        opacity: 0.2;
+                    }
+                    50% {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                }
+                
+                /* Message content formatting */
+                .message-content a {
+                    color: inherit;
+                    text-decoration: underline;
+                }
+                
+                .message-content code {
+                    background-color: rgba(0, 0, 0, 0.05);
+                    padding: 2px 4px;
+                    border-radius: 3px;
+                    font-family: monospace;
+                }
+                
+                .message-content pre {
+                    background-color: #1E1E1E;
+                    padding: 10px;
+                    border-radius: 5px;
+                    overflow-x: auto;
+                    margin: 10px 0;
+                }
+                
+                .message-content pre code {
+                    background-color: transparent;
+                    color: #FFFFFF;
+                    padding: 0;
+                }
+                
+                /* Dark theme */
+                :host([theme="dark"]) .window {
+                    background-color: #222;
+                    color: #fff;
+                }
+                
+                :host([theme="dark"]) .messages {
+                    background-color: #333;
+                }
+                
+                :host([theme="dark"]) .message-assistant .message-content {
+                    background-color: #444;
+                    color: #fff;
+                }
+                
+                :host([theme="dark"]) .input-container {
+                    background-color: #222;
+                    border-top-color: #444;
+                }
+                
+                :host([theme="dark"]) .input {
+                    background-color: #333;
+                    border-color: #444;
+                    color: #fff;
+                }
+                
+                /* Mobile styles */
+                @media (max-width: 767px) {
+                    .bubble {
+                        width: 50px;
+                        height: 50px;
+                        font-size: 20px;
+                    }
+                    
+                    .window {
+                        width: 85vw;
+                        max-width: 350px;
+                        height: 70vh;
+                        max-height: 500px;
+                    }
+                    
+                    :host {
+                        bottom: 140px !important;
+                    }
+                    
+                    .message {
+                        max-width: 90%;
+                    }
+                    
+                    .input {
+                        font-size: 16px;
+                        min-height: 44px;
+                    }
+                    
+                    .send {
+                        width: 44px;
+                        height: 44px;
+                    }
+                }
+                
+                /* Portrait orientation specific fixes */
+                @media (max-width: 767px) and (orientation: portrait) {
+                    :host {
+                        bottom: 140px !important;
+                    }
+                    
+                    .window {
+                        height: 60vh;
+                    }
+                }
+                
+                /* Landscape orientation specific fixes */
+                @media (max-width: 767px) and (orientation: landscape) {
+                    :host {
+                        bottom: 100px !important;
+                    }
+                    
+                    .window {
+                        height: 80vh;
+                        bottom: 60px;
+                    }
+                }
+            </style>
             
-            // Create main container
-            this.container = document.createElement('div');
-            this.container.className = 'bc-assistant-container';
-            
-            // Add theme class if specified
-            if (this.config.theme) {
-                this.container.classList.add('bc-assistant-' + this.config.theme);
-            }
-            
-            // Create chat bubble
-            this.bubble = document.createElement('div');
-            this.bubble.className = 'bc-assistant-bubble';
-            this.bubble.innerHTML = '<i class="fas fa-comments"></i>';
-            
-            // Create enhanced tap area for better click detection
-            this.createEnhancedTapArea();
-            
-            // Create chat window
-            this.window = document.createElement('div');
-            this.window.className = 'bc-assistant-window';
-            
-            // Create window header
-            const header = document.createElement('div');
-            header.className = 'bc-assistant-header';
-            header.innerHTML = `
-                <div class="bc-assistant-title">${this.config.title}</div>
-                <div class="bc-assistant-controls">
-                    <button class="bc-assistant-minimize" title="Zminimalizuj">
-                        <i class="fas fa-minus"></i>
-                    </button>
-                    <button class="bc-assistant-close" title="Zamknij">
-                        <i class="fas fa-times"></i>
-                    </button>
+            <div class="container">
+                <div class="bubble">
+                    <i class="icon">
+                        <!-- Using Font Awesome classes instead of <i> to avoid Font Awesome dependencies -->
+                        ${this.getIconHTML()}
+                    </i>
                 </div>
-            `;
-            
-            // Create messages container
-            this.messagesContainer = document.createElement('div');
-            this.messagesContainer.className = 'bc-assistant-messages';
-            
-            // Create input container
-            const inputContainer = document.createElement('div');
-            inputContainer.className = 'bc-assistant-input-container';
-            inputContainer.innerHTML = `
-                <textarea class="bc-assistant-input" placeholder="Wpisz swoje pytanie..."></textarea>
-                <button class="bc-assistant-send" title="Wyślij">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-            `;
-            
-            // Assemble the components
-            this.window.appendChild(header);
-            this.window.appendChild(this.messagesContainer);
-            this.window.appendChild(inputContainer);
-            
-            this.container.appendChild(this.bubble);
-            this.container.appendChild(this.window);
-            this.wrapper.appendChild(this.container);
-            
-            // Add to document body
-            document.body.appendChild(this.wrapper);
-            
-            // Store references to elements we'll need to access later
-            this.inputField = this.wrapper.querySelector('.bc-assistant-input');
-            this.sendButton = this.wrapper.querySelector('.bc-assistant-send');
-            this.closeButton = this.wrapper.querySelector('.bc-assistant-close');
-            this.minimizeButton = this.wrapper.querySelector('.bc-assistant-minimize');
-        }
-        
-        // Create enhanced tap area for better mobile interaction
-        createEnhancedTapArea() {
-            const tapArea = document.createElement('div');
-            tapArea.className = 'bc-tap-area';
-            
-            // Add the tap area to the bubble
-            this.bubble.appendChild(tapArea);
-        }
-        
-        // Set up all event listeners
-        setupEvents() {
-            // Enhanced click handling with multiple approaches
-            this.setupClickHandlers();
-            
-            // Input field - handle Enter key
-            if (this.inputField) {
-                this.inputField.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        this.sendMessage();
-                    }
-                });
                 
-                // Auto-resize textarea
-                this.inputField.addEventListener('input', function() {
-                    this.style.height = 'auto';
-                    this.style.height = (this.scrollHeight) + 'px';
-                });
-            }
-            
-            // Window resize event
-            window.addEventListener('resize', () => {
-                this.isMobile = this.checkIfMobile();
-                this.applyFixes();
-            });
-            
-            // Check for other floating elements
-            this.checkForFloatingElements();
-            
-            // Add a MutationObserver to detect DOM changes that might add new floating elements
-            this.observeDOMChanges();
+                <div class="window">
+                    <div class="header">
+                        <div class="title">${this.config.title || 'BC Assistant'}</div>
+                        <div class="controls">
+                            <button class="minimize" title="Minimize">−</button>
+                            <button class="close" title="Close">×</button>
+                        </div>
+                    </div>
+                    
+                    <div class="messages"></div>
+                    
+                    <div class="input-container">
+                        <textarea class="input" placeholder="Type your message..."></textarea>
+                        <button class="send" title="Send">→</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * Get icon HTML based on configuration
+     */
+    getIconHTML() {
+        const iconType = this.config.bubble_icon || 'chat';
+        
+        switch (iconType) {
+            case 'question':
+                return '?';
+            case 'info':
+                return 'i';
+            case 'robot':
+                return '🤖';
+            case 'user':
+                return '👨‍⚕️';
+            case 'chat':
+            default:
+                return '💬';
+        }
+    }
+    
+    /**
+     * Add event listeners
+     */
+    addEventListeners() {
+        // Get elements
+        const bubble = this.shadowRoot.querySelector('.bubble');
+        const closeBtn = this.shadowRoot.querySelector('.close');
+        const minimizeBtn = this.shadowRoot.querySelector('.minimize');
+        const sendBtn = this.shadowRoot.querySelector('.send');
+        const input = this.shadowRoot.querySelector('.input');
+        
+        // Toggle chat window
+        if (bubble) {
+            bubble.addEventListener('click', () => this.toggleWindow());
         }
         
-        // Set up multiple event handlers for maximum compatibility
-        setupClickHandlers() {
-            // Tap area click handling
-            const tapArea = this.bubble.querySelector('.bc-tap-area');
-            if (tapArea) {
-                this.addMultipleEventListeners(tapArea, ['click', 'touchend'], (e) => {
+        // Close window
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeWindow());
+        }
+        
+        // Minimize window
+        if (minimizeBtn) {
+            minimizeBtn.addEventListener('click', () => this.closeWindow());
+        }
+        
+        // Send message
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => this.sendMessage());
+        }
+
+// Handle Enter key in input field
+        if (input) {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    e.stopPropagation();
-                    this.toggleWindow();
-                    return false;
-                });
-            }
-            
-            // Bubble click handling (direct)
-            this.addMultipleEventListeners(this.bubble, ['click', 'touchend'], (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleWindow();
-                return false;
-            });
-            
-            // Close button
-            if (this.closeButton) {
-                this.addMultipleEventListeners(this.closeButton, ['click', 'touchend'], (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.closeWindow();
-                    return false;
-                });
-            }
-            
-            // Minimize button
-            if (this.minimizeButton) {
-                this.addMultipleEventListeners(this.minimizeButton, ['click', 'touchend'], (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.closeWindow();
-                    return false;
-                });
-            }
-            
-            // Send button
-            if (this.sendButton) {
-                this.addMultipleEventListeners(this.sendButton, ['click', 'touchend'], (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
                     this.sendMessage();
-                    return false;
-                });
-            }
-        }
-        
-        // Helper to add multiple event listeners to an element
-        addMultipleEventListeners(element, events, handler) {
-            for (const eventName of events) {
-                element.addEventListener(eventName, handler, true);
-            }
-        }
-        
-        // Check for other floating elements at the bottom of the page
-        checkForFloatingElements() {
-            // Common selectors for floating elements
-            const floatingElementSelectors = [
-                '[class*="chat"]', 
-                '[class*="widget"]', 
-                '[class*="bubble"]',
-                '[class*="float"]',
-                '[class*="popup"]',
-                '[class*="bot"]',
-                '[class*="messenger"]',
-                '[id*="chat"]',
-                '[id*="widget"]',
-                '[id*="bubble"]',
-                '[id*="bot"]',
-                '[id*="messenger"]',
-                '[style*="position: fixed"]'
-            ];
-            
-            // Find all floating elements
-            const floatingElements = document.querySelectorAll(floatingElementSelectors.join(','));
-            
-            // Check if any are positioned at the bottom of the screen
-            let hasConflictingElements = false;
-            
-            floatingElements.forEach(el => {
-                // Skip our own elements
-                if (el.closest('.bc-assistant-wrapper')) {
-                    return;
-                }
-                
-                const rect = el.getBoundingClientRect();
-                const viewportHeight = window.innerHeight;
-                
-                // Check if element is in the bottom 200px of the screen
-                if (rect.bottom > viewportHeight - 200) {
-                    hasConflictingElements = true;
                 }
             });
             
-            // Adjust position if needed
-            if (hasConflictingElements) {
-                this.wrapper.classList.add('adjust-for-floating-elements');
-            } else {
-                this.wrapper.classList.remove('adjust-for-floating-elements');
-            }
-        }
-        
-        // Observe DOM changes to detect new floating elements
-        observeDOMChanges() {
-            // Create a MutationObserver to watch for DOM changes
-            const observer = new MutationObserver(() => {
-                // Check for floating elements whenever the DOM changes
-                this.checkForFloatingElements();
-            });
-            
-            // Start observing the document body for added/removed nodes
-            observer.observe(document.body, { 
-                childList: true, 
-                subtree: true 
+            // Auto-resize input field
+            input.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
             });
         }
         
-        // Toggle chat window visibility with enhanced reliability
-        toggleWindow() {
-            if (this.isOpen) {
-                this.closeWindow();
-            } else {
-                this.openWindow();
-            }
-        }
+        // Window resize event
+        window.addEventListener('resize', () => {
+            this.adjustLayout();
+        });
+    }
+    
+    /**
+     * Toggle chat window
+     */
+    toggleWindow() {
+        const window = this.shadowRoot.querySelector('.window');
         
-        // Open chat window
-        openWindow() {
-            this.isOpen = true;
-            
-            // Force display style with !important-like priority
-            this.window.style.setProperty('display', 'flex', 'important');
-            this.window.style.setProperty('visibility', 'visible', 'important');
-            this.window.style.setProperty('opacity', '1', 'important');
-            
-            // Add transition class
-            this.window.classList.add('bc-fade-in');
-            
-            // Focus input field
-            if (this.inputField) {
-                setTimeout(() => this.inputField.focus(), 100);
-            }
-            
-            // Scroll to latest message
-            this.scrollToBottom();
-            
-            // Add class to document body to fix scrolling issues
-            document.body.classList.add('bc-assistant-open');
-            document.documentElement.classList.add('bc-assistant-open');
+        if (this.state.isOpen) {
+            this.closeWindow();
+        } else {
+            this.openWindow();
         }
+    }
+    
+    /**
+     * Open chat window
+     */
+    openWindow() {
+        const window = this.shadowRoot.querySelector('.window');
+        const input = this.shadowRoot.querySelector('.input');
         
-        // Close chat window
-        closeWindow() {
-            this.isOpen = false;
-            this.window.style.setProperty('display', 'none', 'important');
-            
-            // Remove body class
-            document.body.classList.remove('bc-assistant-open');
-            document.documentElement.classList.remove('bc-assistant-open');
-        }
+        if (!window) return;
         
-        // Add a message to the chat
-        addMessage(role, content) {
-            // Create message object
-            const message = {
-                role,
-                content,
-                timestamp: new Date()
-            };
-            
-            // Store in messages array
-            this.messages.push(message);
-            
-            // Create message element
-            const messageElem = document.createElement('div');
-            messageElem.className = `bc-message bc-message-${role}`;
-            
-            // Create message content element
-            const contentElem = document.createElement('div');
-            contentElem.className = 'bc-message-content';
-            contentElem.innerHTML = this.formatMessage(content);
-            
-            // Add timestamp
-            const timestamp = document.createElement('div');
-            timestamp.className = 'bc-message-timestamp';
-            timestamp.textContent = this.formatTime(new Date());
-            
-            // Assemble message
-            messageElem.appendChild(contentElem);
-            messageElem.appendChild(timestamp);
-            
-            // Add to messages container
-            this.messagesContainer.appendChild(messageElem);
-            
-            // Scroll to bottom
-            this.scrollToBottom();
-        }
+        // Update state
+        this.state.isOpen = true;
         
-        // Format message with markdown
-        formatMessage(text) {
-            // Check if text is undefined or null
-            if (!text) {
-                console.warn('BC Assistant: Attempted to format undefined text');
-                return ''; // Return empty string if text is undefined
-            }
-            
-            return text
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/`([^`]+)`/g, '<code>$1</code>')
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-        }
+        // Show window with animation
+        window.style.display = 'flex';
+        window.style.opacity = '0';
+        window.style.transform = 'translateY(10px)';
         
-        // Format timestamp
-        formatTime(date) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
+        // Animate opening
+        setTimeout(() => {
+            window.style.opacity = '1';
+            window.style.transform = 'translateY(0)';
+            window.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        }, 10);
         
-        // Scroll messages to bottom
-        scrollToBottom() {
-            if (!this.messagesContainer) return;
-            
-            // Immediate scroll
-            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-            
-            // Delayed scroll (for images, etc.)
+        // Focus input field
+        if (input) {
             setTimeout(() => {
-                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-                
-                // Final scroll after full render
-                setTimeout(() => {
-                    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-                    
-                    // Force scroll with scrollIntoView as backup
-                    const lastMessage = this.messagesContainer.lastElementChild;
-                    if (lastMessage) {
-                        lastMessage.scrollIntoView({ behavior: 'auto', block: 'end' });
-                    }
-                }, 300);
-            }, 50);
+                input.focus();
+            }, 300);
         }
         
-        // Send message to API
-        async sendMessage() {
-            // Get message from input field
-            const message = this.inputField.value.trim();
+        // Scroll to latest messages
+        this.scrollToBottom();
+    }
+    
+    /**
+     * Close chat window
+     */
+    closeWindow() {
+        const window = this.shadowRoot.querySelector('.window');
+        
+        if (!window) return;
+        
+        // Update state
+        this.state.isOpen = false;
+        
+        // Animate closing
+        window.style.opacity = '0';
+        window.style.transform = 'translateY(10px)';
+        
+        // Hide after animation completes
+        setTimeout(() => {
+            window.style.display = 'none';
+        }, 300);
+    }
+    
+    /**
+     * Send message to API
+     */
+    async sendMessage() {
+        const input = this.shadowRoot.querySelector('.input');
+        
+        if (!input) return;
+        
+        // Get message text
+        const messageText = input.value.trim();
+        
+        // Skip empty messages or if already sending
+        if (!messageText || this.state.isTyping) return;
+        
+        // Update state
+        this.state.isTyping = true;
+        
+        // Add user message to chat
+        this.addMessage('user', messageText);
+        
+        // Clear input field
+        input.value = '';
+        input.style.height = 'auto';
+        
+        // Show typing indicator
+        this.showTypingIndicator();
+        
+        try {
+            // Create form data
+            const formData = new FormData();
+            formData.append('action', this.config.action);
+            formData.append('message', messageText);
+            formData.append('thread_id', this.state.threadId);
+            formData.append('nonce', this.config.nonce);
             
-            // Skip if empty or already processing
-            if (!message || this.isTyping) return;
+            // Add page context if needed
+            const context = this.getAttribute('context') || 'default';
+            const procedureName = this.getAttribute('procedure') || '';
             
-            // Add user message to chat
-            this.addMessage('user', message);
+            if (context !== 'default') {
+                formData.append('context', context);
+            }
             
-            // Clear input field and reset height
-            this.inputField.value = '';
-            this.inputField.style.height = 'auto';
+            if (procedureName) {
+                formData.append('procedure_name', procedureName);
+            }
             
-            // Show typing indicator
-            this.isTyping = true;
-            this.showTypingIndicator();
+            // Send request
+            const response = await fetch(this.config.apiEndpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: formData
+            });
             
-            try {
-                // Prepare form data
-                const formData = new FormData();
-                formData.append('action', this.config.action);
-                formData.append('message', message);
-                formData.append('thread_id', this.threadId);
-                formData.append('nonce', this.config.nonce);
+            // Parse response
+            const data = await response.json();
+            
+            // Hide typing indicator
+            this.hideTypingIndicator();
+            
+            // Update state
+            this.state.isTyping = false;
+            
+            // Handle response
+            if (data.success) {
+                // Add assistant response
+                this.addMessage('assistant', data.data.message);
                 
-                // Send to API
-                const response = await fetch(this.config.apiEndpoint, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    body: formData
-                });
+                // Store thread ID if provided
+                if (data.data.thread_id) {
+                    this.state.threadId = data.data.thread_id;
+                    localStorage.setItem('bc_assistant_thread_id', this.state.threadId);
+                }
+            } else {
+                // Show error message
+                this.addMessage('assistant', 'Sorry, an error occurred. Please try again later.');
                 
-                // Parse response
-                const data = await response.json();
-                
-                // Hide typing indicator
-                this.hideTypingIndicator();
-                this.isTyping = false;
-                
-                if (data.success) {
-                    // Add assistant response to chat
-                    this.addMessage('assistant', data.data.message);
-                    
-                    // Store thread ID if provided
-                    if (data.data.thread_id) {
-                        this.threadId = data.data.thread_id;
-                        localStorage.setItem('bc_assistant_thread_id', this.threadId);
-                    }
-                } else {
-                    // Show error message
-                    this.addMessage('assistant', 'Przepraszam, wystąpił błąd. Spróbuj ponownie później.');
+                // Log error
+                if (this.config.debug) {
                     console.error('BC Assistant API Error:', data);
                 }
-            } catch (error) {
-                // Hide typing indicator
-                this.hideTypingIndicator();
-                this.isTyping = false;
-                
-                // Show error message
-                this.addMessage('assistant', 'Przepraszam, wystąpił błąd połączenia. Spróbuj ponownie później.');
+            }
+        } catch (error) {
+            // Hide typing indicator
+            this.hideTypingIndicator();
+            
+            // Update state
+            this.state.isTyping = false;
+            
+            // Show error message
+            this.addMessage('assistant', 'Sorry, a connection error occurred. Please try again later.');
+            
+            // Log error
+            if (this.config.debug) {
                 console.error('BC Assistant Error:', error);
             }
         }
+    }
+    
+    /**
+     * Add message to chat
+     */
+    addMessage(role, content) {
+        const messagesContainer = this.shadowRoot.querySelector('.messages');
         
-        // Show typing indicator
-        showTypingIndicator() {
-            const indicatorElem = document.createElement('div');
-            indicatorElem.className = 'bc-message bc-message-assistant bc-typing-indicator';
-            indicatorElem.innerHTML = `
-                <div class="bc-message-content">
-                    <div class="bc-typing-dots">
-                        <span></span><span></span><span></span>
-                    </div>
+        if (!messagesContainer) return;
+        
+        // Create message element
+        const messageElem = document.createElement('div');
+        messageElem.className = `message message-${role}`;
+        
+        // Create message content element
+        const contentElem = document.createElement('div');
+        contentElem.className = 'message-content';
+        contentElem.innerHTML = this.formatMessage(content);
+        
+        // Create timestamp element
+        const timestampElem = document.createElement('div');
+        timestampElem.className = 'message-timestamp';
+        timestampElem.textContent = this.formatTime(new Date());
+        
+        // Assemble message
+        messageElem.appendChild(contentElem);
+        messageElem.appendChild(timestampElem);
+        
+        // Add to container
+        messagesContainer.appendChild(messageElem);
+        
+        // Store in state
+        this.state.messages.push({
+            role,
+            content,
+            timestamp: new Date()
+        });
+        
+        // Scroll to bottom
+        this.scrollToBottom();
+    }
+    
+    /**
+     * Format message with Markdown-like syntax
+     */
+    formatMessage(text) {
+        if (!text) return '';
+        
+        return text
+            // Replace newlines with <br>
+            .replace(/\n/g, '<br>')
+            // Bold text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            // Italic text
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            // Inline code
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            // Links
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+            // Code blocks
+            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    }
+    
+    /**
+     * Format time
+     */
+    formatTime(date) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    /**
+     * Show typing indicator
+     */
+    showTypingIndicator() {
+        const messagesContainer = this.shadowRoot.querySelector('.messages');
+        
+        if (!messagesContainer) return;
+        
+        // Create indicator element
+        const indicatorElem = document.createElement('div');
+        indicatorElem.className = 'message message-assistant typing-indicator';
+        
+        // Create content
+        indicatorElem.innerHTML = `
+            <div class="message-content">
+                <div class="typing-dots">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
                 </div>
-            `;
-            
-            this.messagesContainer.appendChild(indicatorElem);
-            this.scrollToBottom();
-        }
+            </div>
+        `;
         
-        // Hide typing indicator
-        hideTypingIndicator() {
-            const indicator = this.messagesContainer.querySelector('.bc-typing-indicator');
-            if (indicator) {
-                indicator.remove();
-            }
-        }
+        // Add to container
+        messagesContainer.appendChild(indicatorElem);
         
-        // Apply fixes for known issues and conflicts
-        applyFixes() {
-            // Fix positioning
-            this.fixPositioning();
-            
-            // Fix z-index issues
-            this.fixZIndex();
-            
-            // Fix mobile-specific issues
-            if (this.isMobile) {
-                this.fixMobileDisplay();
-            }
-            
-            // Apply browser-specific fixes
-            this.applyBrowserSpecificFixes();
-            
-            // Check for other floating elements again
-            this.checkForFloatingElements();
-        }
+        // Scroll to bottom
+        this.scrollToBottom();
+    }
+    
+    /**
+     * Hide typing indicator
+     */
+    hideTypingIndicator() {
+        const indicator = this.shadowRoot.querySelector('.typing-indicator');
         
-        // Fix positioning
-        fixPositioning() {
-            // Get position from config
-            const position = this.config.position || 'bottom-right';
-            
-            // Mobile positioning
-            if (this.isMobile) {
-                // Clear inline styles first
-                this.wrapper.style.removeProperty('top');
-                this.wrapper.style.removeProperty('left');
-                this.wrapper.style.removeProperty('right');
-                
-                // Set bottom position higher on mobile
-                this.wrapper.style.setProperty('bottom', '140px', 'important');
-                
-                // Left/right positioning based on config
-                if (position.includes('left')) {
-                    this.wrapper.style.setProperty('left', '20px', 'important');
-                    this.wrapper.style.setProperty('right', 'auto', 'important');
-                } else {
-                    this.wrapper.style.setProperty('right', '20px', 'important');
-                    this.wrapper.style.setProperty('left', 'auto', 'important');
-                }
-            } else {
-                // Desktop positioning
-                if (position === 'bottom-right') {
-                    this.wrapper.style.setProperty('bottom', '20px', 'important');
-                    this.wrapper.style.setProperty('right', '20px', 'important');
-                    this.wrapper.style.setProperty('left', 'auto', 'important');
-                    this.wrapper.style.setProperty('top', 'auto', 'important');
-                } else if (position === 'bottom-left') {
-                    this.wrapper.style.setProperty('bottom', '20px', 'important');
-                    this.wrapper.style.setProperty('left', '20px', 'important');
-                    this.wrapper.style.setProperty('right', 'auto', 'important');
-                    this.wrapper.style.setProperty('top', 'auto', 'important');
-                } else if (position === 'top-right') {
-                    this.wrapper.style.setProperty('top', '20px', 'important');
-                    this.wrapper.style.setProperty('right', '20px', 'important');
-                    this.wrapper.style.setProperty('bottom', 'auto', 'important');
-                    this.wrapper.style.setProperty('left', 'auto', 'important');
-                } else if (position === 'top-left') {
-                    this.wrapper.style.setProperty('top', '20px', 'important');
-                    this.wrapper.style.setProperty('left', '20px', 'important');
-                    this.wrapper.style.setProperty('bottom', 'auto', 'important');
-                    this.wrapper.style.setProperty('right', 'auto', 'important');
-                }
-            }
-            
-            // Set window position based on position setting
-            if (this.window) {
-                if (position.includes('left')) {
-                    this.window.style.setProperty('left', '0', 'important');
-                    this.window.style.setProperty('right', 'auto', 'important');
-                } else {
-                    this.window.style.setProperty('right', '0', 'important');
-                    this.window.style.setProperty('left', 'auto', 'important');
-                }
-                
-                if (position.includes('top')) {
-                    this.window.style.setProperty('top', '70px', 'important');
-                    this.window.style.setProperty('bottom', 'auto', 'important');
-                } else {
-                    this.window.style.setProperty('bottom', '70px', 'important');
-                    this.window.style.setProperty('top', 'auto', 'important');
-                }
-            }
-        }
-        
-        // Fix z-index issues
-        fixZIndex() {
-            // Use maximum valid z-index
-            const highZIndex = 2147483647;
-            
-            this.wrapper.style.setProperty('z-index', highZIndex, 'important');
-            
-            if (this.container) {
-                this.container.style.setProperty('z-index', highZIndex, 'important');
-            }
-            
-            if (this.bubble) {
-                this.bubble.style.setProperty('z-index', highZIndex, 'important');
-            }
-            
-            if (this.window) {
-                this.window.style.setProperty('z-index', highZIndex, 'important');
-            }
-        }
-        
-        // Fix mobile-specific display issues
-        fixMobileDisplay() {
-            // Ensure bubble is properly sized and visible
-            if (this.bubble) {
-                this.bubble.style.setProperty('width', '50px', 'important');
-                this.bubble.style.setProperty('height', '50px', 'important');
-                this.bubble.style.setProperty('display', 'flex', 'important');
-                this.bubble.style.setProperty('align-items', 'center', 'important');
-                this.bubble.style.setProperty('justify-content', 'center', 'important');
-                this.bubble.style.setProperty('visibility', 'visible', 'important');
-                this.bubble.style.setProperty('opacity', '1', 'important');
-                this.bubble.style.setProperty('border', '2px solid #fff', 'important');
-                this.bubble.style.setProperty('box-shadow', '0 2px 10px rgba(0,0,0,0.3)', 'important');
-            }
-            
-            // Adjust window size for mobile
-            if (this.window) {
-                this.window.style.setProperty('width', '85vw', 'important');
-                this.window.style.setProperty('height', '70vh', 'important');
-                this.window.style.setProperty('max-width', '350px', 'important');
-            }
-        }
-        
-        // Apply browser-specific fixes
-        applyBrowserSpecificFixes() {
-            const isFirefox = navigator.userAgent.indexOf('Firefox') !== -1;
-            const isEdge = /Edge/.test(navigator.userAgent);
-            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-            
-            // Firefox-specific fixes
-            if (isFirefox) {
-                this.wrapper.style.setProperty('transform', 'none', 'important');
-                this.bubble.style.setProperty('transform', 'none', 'important');
-                
-                // Mobile Firefox needs special handling
-                if (this.isMobile) {
-                    this.wrapper.style.setProperty('min-width', '50px', 'important');
-                    this.wrapper.style.setProperty('min-height', '50px', 'important');
-                    this.wrapper.style.setProperty('clip-path', 'none', 'important');
-                    this.bubble.style.setProperty('clip-path', 'none', 'important');
-                }
-            }
-            
-            // Edge-specific fixes
-            if (isEdge) {
-                // Force hardware acceleration
-                this.wrapper.style.setProperty('transform', 'translateZ(0)', 'important');
-                this.bubble.style.setProperty('transform', 'translateZ(0)', 'important');
-            }
-            
-            // Safari-specific fixes
-            if (isSafari) {
-                this.wrapper.style.setProperty('-webkit-tap-highlight-color', 'rgba(0,0,0,0)', 'important');
-                this.bubble.style.setProperty('-webkit-user-select', 'none', 'important');
-                this.bubble.style.setProperty('user-select', 'none', 'important');
-            }
-        }
-        
-        // Ensure visibility (called periodically)
-        ensureVisibility() {
-            if (this.wrapper) {
-                this.wrapper.style.setProperty('display', 'block', 'important');
-                this.wrapper.style.setProperty('visibility', 'visible', 'important');
-                this.wrapper.style.setProperty('opacity', '1', 'important');
-                this.wrapper.style.setProperty('position', 'fixed', 'important');
-                
-                // Force all child elements to be visible too
-                if (this.bubble) {
-                    this.bubble.style.setProperty('display', 'flex', 'important');
-                    this.bubble.style.setProperty('visibility', 'visible', 'important');
-                    this.bubble.style.setProperty('opacity', '1', 'important');
-                }
-                
-                // Only make window visible if it's supposed to be open
-                if (this.window) {
-                    if (this.isOpen) {
-                        this.window.style.setProperty('display', 'flex', 'important');
-                        this.window.style.setProperty('visibility', 'visible', 'important');
-                        this.window.style.setProperty('opacity', '1', 'important');
-                    } else {
-                        this.window.style.setProperty('display', 'none', 'important');
-                    }
-                }
-                
-                // Re-apply browser-specific fixes
-                this.applyBrowserSpecificFixes();
-                
-                // Check for other floating elements
-                this.checkForFloatingElements();
-            }
+        if (indicator) {
+            indicator.remove();
         }
     }
     
-    // Initialize the assistant once DOM is loaded
-    function initBCAssistant() {
-        try {
-            // Check for existing instance first
-            if (bcAssistantInstance) {
-                console.log("BC Assistant already initialized");
-                return;
-            }
-            
-            // Initialize welcome message if needed
-            if (typeof window.bcAssistantWelcomeMessage === 'undefined' || !window.bcAssistantWelcomeMessage) {
-                window.bcAssistantWelcomeMessage = 'Witaj! W czym mogę pomóc?';
-            }
-            
-            // Update config with welcome message if needed
-            if (window.bcAssistantData && !window.bcAssistantData.welcomeMessage) {
-                window.bcAssistantData.welcomeMessage = window.bcAssistantWelcomeMessage;
-            }
-            
-            // Create new instance
-            bcAssistantInstance = new BCAssistant(bcConfig);
-            window.bcAssistant = bcAssistantInstance;
-            console.log("BC Assistant initialized successfully");
-        } catch (error) {
-            console.error("BC Assistant initialization error:", error);
+    /**
+     * Scroll messages to bottom
+     */
+    scrollToBottom() {
+        const messagesContainer = this.shadowRoot.querySelector('.messages');
+        
+        if (!messagesContainer) return;
+        
+        // Immediate scroll
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        // Delayed scroll for images and dynamic content
+        setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, 100);
+    }
+    
+    /**
+     * Adjust layout based on screen size
+     */
+    adjustLayout() {
+        const isMobile = window.innerWidth < 768;
+        
+        if (isMobile) {
+            this.setAttribute('mobile', 'true');
+        } else {
+            this.removeAttribute('mobile');
         }
     }
-    
-    // Initialize when document is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initBCAssistant);
-    } else {
-        initBCAssistant();
+}
+
+// Register the custom element
+customElements.define('bc-assistant-widget', BCAssistantWidget);
+
+// Initialize widget when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if element already exists (might be added in templates)
+    if (!document.querySelector('bc-assistant-widget')) {
+        // Create element
+        const widget = document.createElement('bc-assistant-widget');
+        
+        // Get page context
+        const pageUrl = window.location.href;
+        let context = 'default';
+        let procedure = '';
+        
+        // Detect context based on URL
+        if (pageUrl.includes('/laseroterapia/')) {
+            context = 'procedure';
+            procedure = 'Laseroterapia';
+        } else if (pageUrl.includes('/kosmetologia/')) {
+            context = 'procedure';
+            procedure = 'Kosmetologia';
+        } else if (pageUrl.includes('/medycyna-estetyczna/')) {
+            context = 'procedure';
+            procedure = 'Medycyna estetyczna';
+        } else if (pageUrl.includes('/przeciwwskazania/')) {
+            context = 'contraindications';
+        } else if (pageUrl.includes('/cennik/')) {
+            context = 'prices';
+        }
+        
+        // Set attributes
+        widget.setAttribute('context', context);
+        if (procedure) {
+            widget.setAttribute('procedure', procedure);
+        }
+        
+        // Add to body
+        document.body.appendChild(widget);
     }
-    
-    // Also initialize on window load for good measure
-    window.addEventListener('load', initBCAssistant);
-    
-})(jQuery);
+});

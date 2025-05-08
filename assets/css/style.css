@@ -1,641 +1,445 @@
 /**
- * BC Assistant - Complete CSS
- * Includes fixes for cross-browser compatibility
+ * BC Assistant - Modern CSS
+ * Version 2.0.0
+ * 
+ * This stylesheet is used for the traditional DOM implementation.
+ * The Shadow DOM implementation uses its own scoped styles.
  */
 
-/* 
- * Core structure - using high specificity selectors
- */
+/* ===== Core Structure ===== */
 .bc-assistant-wrapper {
-    position: fixed !important;
-    z-index: 2147483647 !important; /* Maximum z-index value */
-    box-sizing: border-box !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+    position: fixed;
+    z-index: 999999;
+    box-sizing: border-box;
+    display: block;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    line-height: 1.5;
+    font-size: 14px;
 }
 
 /* Position variations */
 .bc-assistant-wrapper[data-position="bottom-right"] {
-    right: 20px !important;
-    bottom: 20px !important;
-    left: auto !important;
-    top: auto !important;
+    right: 20px;
+    bottom: 20px;
 }
 
 .bc-assistant-wrapper[data-position="bottom-left"] {
-    left: 20px !important;
-    bottom: 20px !important;
-    right: auto !important;
-    top: auto !important;
+    left: 20px;
+    bottom: 20px;
 }
 
 .bc-assistant-wrapper[data-position="top-right"] {
-    right: 20px !important;
-    top: 20px !important;
-    bottom: auto !important;
-    left: auto !important;
+    right: 20px;
+    top: 20px;
 }
 
 .bc-assistant-wrapper[data-position="top-left"] {
-    left: 20px !important;
-    top: 20px !important;
-    bottom: auto !important;
-    right: auto !important;
+    left: 20px;
+    top: 20px;
 }
 
 /* Container */
-.bc-assistant-wrapper .bc-assistant-container {
-    position: relative !important;
-    display: block !important;
-    z-index: inherit !important;
-    box-sizing: border-box !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+.bc-assistant-container {
+    position: relative;
 }
 
-/* Bubble button */
-.bc-assistant-wrapper .bc-assistant-bubble {
-    width: 60px !important;
-    height: 60px !important;
-    border-radius: 50% !important;
-    background-color: #A67C52 !important; /* Bielsko Clinic color */
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
-    transition: transform 0.3s ease !important;
-    z-index: inherit !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    color: white !important;
-    font-size: 24px !important;
-    position: relative !important; /* Required for tap area */
-    transform: none !important; /* Prevents transform issues */
+/* ===== Bubble Button ===== */
+.bc-assistant-bubble {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #A67C52; /* Bielsko Clinic color */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease;
+    color: white;
+    font-size: 24px;
 }
 
-.bc-assistant-wrapper .bc-assistant-bubble:hover {
-    transform: scale(1.1) !important;
+.bc-assistant-bubble:hover {
+    transform: scale(1.1);
 }
 
-/* Enhanced tap area for better touch detection */
-.bc-assistant-wrapper .bc-tap-area {
-    position: absolute !important;
-    top: -20px !important;
-    left: -20px !important;
-    right: -20px !important;
-    bottom: -20px !important;
-    z-index: 2 !important;
-    cursor: pointer !important;
-    background-color: transparent !important;
+/* ===== Chat Window ===== */
+.bc-assistant-window {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    width: 350px;
+    height: 500px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-/* Chat window */
-.bc-assistant-wrapper .bc-assistant-window {
-    position: absolute !important;
-    bottom: 70px !important;
-    right: 0 !important;
-    width: 350px !important;
-    height: 500px !important;
-    background-color: #fff !important;
-    border-radius: 10px !important;
-    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2) !important;
-    display: none !important; /* Hidden by default */
-    flex-direction: column !important;
-    overflow: hidden !important;
-    z-index: inherit !important;
-    box-sizing: border-box !important;
-}
-
-/* Left position adjustment */
+/* Position variations for window */
 .bc-assistant-wrapper[data-position="bottom-left"] .bc-assistant-window {
-    right: auto !important;
-    left: 0 !important;
+    right: auto;
+    left: 0;
 }
 
-/* Top position adjustment */
 .bc-assistant-wrapper[data-position="top-right"] .bc-assistant-window {
-    bottom: auto !important;
-    top: 70px !important;
+    bottom: auto;
+    top: 70px;
 }
 
 .bc-assistant-wrapper[data-position="top-left"] .bc-assistant-window {
-    bottom: auto !important;
-    top: 70px !important;
-    right: auto !important;
-    left: 0 !important;
+    bottom: auto;
+    top: 70px;
+    right: auto;
+    left: 0;
 }
 
-/* Chat header */
-.bc-assistant-wrapper .bc-assistant-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 15px !important;
-    background-color: #A67C52 !important; /* Bielsko Clinic color */
-    color: #fff !important;
-    border-top-left-radius: 10px !important;
-    border-top-right-radius: 10px !important;
+/* ===== Chat Header ===== */
+.bc-assistant-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #A67C52;
+    color: #fff;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
 }
 
-.bc-assistant-wrapper .bc-assistant-title {
-    font-weight: bold !important;
-    font-size: 16px !important;
+.bc-assistant-title {
+    font-weight: bold;
+    font-size: 16px;
 }
 
-.bc-assistant-wrapper .bc-assistant-controls {
-    display: flex !important;
-    align-items: center !important;
+.bc-assistant-controls {
+    display: flex;
+    align-items: center;
 }
 
-.bc-assistant-wrapper .bc-assistant-minimize,
-.bc-assistant-wrapper .bc-assistant-close {
-    background: none !important;
-    border: none !important;
-    color: #fff !important;
-    font-size: 16px !important;
-    cursor: pointer !important;
-    padding: 0 !important;
-    margin-left: 10px !important;
-    line-height: 1 !important;
+.bc-assistant-minimize,
+.bc-assistant-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 10px;
+    line-height: 1;
 }
 
-/* Messages container */
-.bc-assistant-wrapper .bc-assistant-messages {
-    flex: 1 !important;
-    overflow-y: auto !important;
-    padding: 15px !important;
-    background-color: #f5f5f5 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    scroll-behavior: smooth !important;
-    -webkit-overflow-scrolling: touch !important; /* Better scrolling on iOS */
+/* ===== Messages Container ===== */
+.bc-assistant-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    background-color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    scroll-behavior: smooth;
 }
 
-/* Message styling */
-.bc-assistant-wrapper .bc-message {
-    margin-bottom: 15px !important;
-    max-width: 80% !important;
-    display: flex !important;
-    flex-direction: column !important;
+/* ===== Message Styling ===== */
+.bc-message {
+    margin-bottom: 15px;
+    max-width: 80%;
+    display: flex;
+    flex-direction: column;
 }
 
-.bc-assistant-wrapper .bc-message-user {
-    align-self: flex-end !important;
+.bc-message-user {
+    align-self: flex-end;
 }
 
-.bc-assistant-wrapper .bc-message-assistant {
-    align-self: flex-start !important;
+.bc-message-assistant {
+    align-self: flex-start;
 }
 
-.bc-assistant-wrapper .bc-message-content {
-    padding: 10px 15px !important;
-    border-radius: 18px !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-    word-wrap: break-word !important;
-    line-height: 1.4 !important;
+.bc-message-content {
+    padding: 10px 15px;
+    border-radius: 18px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    word-wrap: break-word;
+    line-height: 1.4;
 }
 
-.bc-assistant-wrapper .bc-message-user .bc-message-content {
-    background-color: #A67C52 !important; /* Bielsko Clinic color */
-    color: #fff !important;
-    border-bottom-right-radius: 5px !important;
+.bc-message-user .bc-message-content {
+    background-color: #A67C52;
+    color: #fff;
+    border-bottom-right-radius: 5px;
 }
 
-.bc-assistant-wrapper .bc-message-assistant .bc-message-content {
-    background-color: #fff !important;
-    color: #333 !important;
-    border-bottom-left-radius: 5px !important;
+.bc-message-assistant .bc-message-content {
+    background-color: #fff;
+    color: #333;
+    border-bottom-left-radius: 5px;
 }
 
-.bc-assistant-wrapper .bc-message-timestamp {
-    font-size: 12px !important;
-    color: #888 !important;
-    margin-top: 5px !important;
-    text-align: right !important;
+.bc-message-timestamp {
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+    text-align: right;
 }
 
-/* Input container */
-.bc-assistant-wrapper .bc-assistant-input-container {
-    display: flex !important;
-    padding: 10px !important;
-    border-top: 1px solid #eee !important;
-    background-color: #fff !important;
+/* ===== Input Container ===== */
+.bc-assistant-input-container {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid #eee;
+    background-color: #fff;
 }
 
-.bc-assistant-wrapper .bc-assistant-input {
-    flex: 1 !important;
-    border: 1px solid #ddd !important;
-    border-radius: 20px !important;
-    padding: 10px 15px !important;
-    font-size: 14px !important;
-    resize: none !important;
-    outline: none !important;
-    min-height: 40px !important;
-    max-height: 100px !important;
-    overflow-y: auto !important;
+.bc-assistant-input {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 10px 15px;
+    font-size: 14px;
+    resize: none;
+    outline: none;
+    min-height: 40px;
+    max-height: 100px;
+    overflow-y: auto;
+    font-family: inherit;
 }
 
-.bc-assistant-wrapper .bc-assistant-input:focus {
-    border-color: #A67C52 !important;
-    box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.1) !important;
+.bc-assistant-input:focus {
+    border-color: #A67C52;
+    box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.1);
 }
 
-.bc-assistant-wrapper .bc-assistant-send {
-    background-color: #A67C52 !important;
-    color: #fff !important;
-    border: none !important;
-    border-radius: 50% !important;
-    width: 40px !important;
-    height: 40px !important;
-    margin-left: 10px !important;
-    cursor: pointer !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    transition: background-color 0.3s !important;
+.bc-assistant-send {
+    background-color: #A67C52;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    margin-left: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
 }
 
-.bc-assistant-wrapper .bc-assistant-send:hover {
-    background-color: #8D6848 !important;
+.bc-assistant-send:hover {
+    background-color: #8D6848;
 }
 
-/* Typing indicator */
-.bc-assistant-wrapper .bc-typing-indicator {
-    margin-bottom: 10px !important;
+/* ===== Typing Indicator ===== */
+.bc-typing-indicator {
+    margin-bottom: 10px;
 }
 
-.bc-assistant-wrapper .bc-typing-dots {
-    display: flex !important;
-    align-items: center !important;
+.bc-typing-dots {
+    display: flex;
+    align-items: center;
 }
 
-.bc-assistant-wrapper .bc-typing-dots span {
-    width: 8px !important;
-    height: 8px !important;
-    margin: 0 2px !important;
-    background-color: #A67C52 !important;
-    border-radius: 50% !important;
-    display: inline-block !important;
-    animation: bc-typing 1.4s infinite ease-in-out both !important;
+.bc-typing-dot {
+    width: 8px;
+    height: 8px;
+    margin: 0 2px;
+    background-color: #A67C52;
+    border-radius: 50%;
+    display: inline-block;
+    animation: bc-typing 1.4s infinite ease-in-out both;
 }
 
-.bc-assistant-wrapper .bc-typing-dots span:nth-child(2) {
-    animation-delay: 0.2s !important;
+.bc-typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
 }
 
-.bc-assistant-wrapper .bc-typing-dots span:nth-child(3) {
-    animation-delay: 0.4s !important;
+.bc-typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
 }
 
 @keyframes bc-typing {
     0%, 80%, 100% {
-        transform: scale(0.75) !important;
-        opacity: 0.2 !important;
+        transform: scale(0.75);
+        opacity: 0.2;
     }
     50% {
-        transform: scale(1) !important;
-        opacity: 1 !important;
+        transform: scale(1);
+        opacity: 1;
     }
 }
 
-/* Message content formatting */
-.bc-assistant-wrapper .bc-message-content a {
-    color: inherit !important;
-    text-decoration: underline !important;
+/* ===== Message Content Formatting ===== */
+.bc-message-content a {
+    color: inherit;
+    text-decoration: underline;
 }
 
-.bc-assistant-wrapper .bc-message-content code {
-    background-color: rgba(0, 0, 0, 0.05) !important;
-    padding: 2px 4px !important;
-    border-radius: 3px !important;
-    font-family: monospace !important;
+.bc-message-content code {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
 }
 
-.bc-assistant-wrapper .bc-message-content pre {
-    background-color: #1E1E1E !important;
-    padding: 10px !important;
-    border-radius: 5px !important;
-    overflow-x: auto !important;
-    margin: 10px 0 !important;
+.bc-message-content pre {
+    background-color: #1E1E1E;
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin: 10px 0;
 }
 
-.bc-assistant-wrapper .bc-message-content pre code {
-    background-color: transparent !important;
-    color: #FFFFFF !important;
-    padding: 0 !important;
+.bc-message-content pre code {
+    background-color: transparent;
+    color: #FFFFFF;
+    padding: 0;
 }
 
-/* Scrollbar styling */
-.bc-assistant-wrapper .bc-assistant-messages::-webkit-scrollbar {
-    width: 6px !important;
+/* ===== Scrollbar Styling ===== */
+.bc-assistant-messages::-webkit-scrollbar {
+    width: 6px;
 }
 
-.bc-assistant-wrapper .bc-assistant-messages::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05) !important;
+.bc-assistant-messages::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
 }
 
-.bc-assistant-wrapper .bc-assistant-messages::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2) !important;
-    border-radius: 3px !important;
+.bc-assistant-messages::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
 }
 
-.bc-assistant-wrapper .bc-assistant-input::-webkit-scrollbar {
-    width: 6px !important;
+.bc-assistant-input::-webkit-scrollbar {
+    width: 6px;
 }
 
-.bc-assistant-wrapper .bc-assistant-input::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05) !important;
+.bc-assistant-input::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
 }
 
-.bc-assistant-wrapper .bc-assistant-input::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2) !important;
-    border-radius: 3px !important;
+.bc-assistant-input::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
 }
 
-/* Mobile styles */
+/* ===== Themes ===== */
+/* Light theme is default */
+.bc-assistant-container.bc-assistant-dark {
+    color-scheme: dark;
+}
+
+.bc-assistant-container.bc-assistant-dark .bc-assistant-window {
+    background-color: #222;
+    color: #fff;
+}
+
+.bc-assistant-container.bc-assistant-dark .bc-assistant-messages {
+    background-color: #333;
+}
+
+.bc-assistant-container.bc-assistant-dark .bc-message-assistant .bc-message-content {
+    background-color: #444;
+    color: #fff;
+}
+
+.bc-assistant-container.bc-assistant-dark .bc-assistant-input-container {
+    background-color: #222;
+    border-top-color: #444;
+}
+
+.bc-assistant-container.bc-assistant-dark .bc-assistant-input {
+    background-color: #333;
+    border-color: #444;
+    color: #fff;
+}
+
+/* ===== Mobile Styles ===== */
 @media (max-width: 767px) {
-    /* Forceful mobile positioning and visibility */
     .bc-assistant-wrapper {
-        position: fixed !important;
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        z-index: 2147483647 !important; /* Maximum z-index value */
-        pointer-events: auto !important;
-        touch-action: auto !important;
-        -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
-        bottom: 140px !important; /* Higher position on mobile for better visibility */
-        right: 20px !important;
-        left: auto !important;
-        top: auto !important;
+        bottom: 140px;
     }
     
-    /* Ensure bubble is visible and properly sized */
-    .bc-assistant-wrapper .bc-assistant-bubble {
-        width: 50px !important;
-        height: 50px !important;
-        font-size: 20px !important;
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        align-items: center !important;
-        justify-content: center !important;
-        border: 2px solid #fff !important; /* Add border for visibility */
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important; /* Stronger shadow for visibility */
-        transform: none !important; /* Prevent transforms from breaking visibility */
+    .bc-assistant-bubble {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
     }
     
-    /* Adjust tap area for better touch on mobile */
-    .bc-assistant-wrapper .bc-tap-area {
-        top: -25px !important;
-        left: -25px !important;
-        right: -25px !important;
-        bottom: -25px !important;
+    .bc-assistant-window {
+        width: 85vw;
+        max-width: 350px;
+        height: 70vh;
+        max-height: 500px;
     }
     
-    /* Window sizing for mobile */
-    .bc-assistant-wrapper .bc-assistant-window {
-        width: 85vw !important;
-        max-width: 350px !important;
-        height: 70vh !important;
-        max-height: 500px !important;
+    .bc-message {
+        max-width: 90%;
     }
     
-    /* Ensure messages fit mobile screen better */
-    .bc-assistant-wrapper .bc-message {
-        max-width: 90% !important;
+    .bc-assistant-input {
+        font-size: 16px;
+        min-height: 44px;
     }
     
-    /* Better tap target and readability */
-    .bc-assistant-wrapper .bc-assistant-input {
-        font-size: 16px !important; /* Better size for touch devices */
-        min-height: 44px !important; /* Better tap target */
-    }
-    
-    .bc-assistant-wrapper .bc-assistant-send {
-        width: 44px !important;
-        height: 44px !important;
-    }
-}
-
-/* Firefox-specific fixes */
-@-moz-document url-prefix() {
-    @media (max-width: 767px) {
-        .bc-assistant-wrapper {
-            min-width: 50px !important;
-            min-height: 50px !important;
-            clip: auto !important;
-            clip-path: none !important;
-            pointer-events: auto !important;
-            transform: none !important;
-        }
-        
-        .bc-assistant-wrapper .bc-assistant-bubble {
-            transform: none !important;
-            clip-path: none !important;
-        }
-        
-        .bc-assistant-wrapper .bc-assistant-bubble::before {
-            content: "" !important;
-            position: absolute !important;
-            top: -20px !important;
-            right: -20px !important;
-            bottom: -20px !important;
-            left: -20px !important;
-            z-index: 1 !important;
-        }
-    }
-}
-
-/* Safari and iOS specific fixes */
-@supports (-webkit-touch-callout: none) {
-    .bc-assistant-wrapper {
-        pointer-events: auto !important;
-    }
-    
-    .bc-assistant-wrapper .bc-assistant-bubble {
-        cursor: pointer !important;
-        -webkit-user-select: none !important;
-        user-select: none !important;
-    }
-}
-
-/* Fix scrolling issues when chat is open */
-body.bc-assistant-open,
-html.bc-assistant-open {
-    overflow: auto !important;
-    position: relative !important;
-    height: auto !important;
-}
-
-/* For very small screens, ensure proper sizing */
-@media (max-width: 480px) {
-    body, html {
-        overflow-x: hidden !important;
-        overflow-y: auto !important;
-        position: relative !important;
-        height: auto !important;
-        width: 100% !important;
-    }
-    
-    .bc-assistant-wrapper .bc-assistant-window {
-        width: 90vw !important;
-        right: 0 !important;
-        left: auto !important;
-    }
-    
-    .bc-assistant-wrapper[data-position="bottom-left"] .bc-assistant-window {
-        right: auto !important;
-        left: 0 !important;
+    .bc-assistant-send {
+        width: 44px;
+        height: 44px;
     }
 }
 
 /* Portrait orientation specific fixes */
 @media (max-width: 767px) and (orientation: portrait) {
     .bc-assistant-wrapper {
-        bottom: 140px !important;
+        bottom: 140px;
     }
     
-    .bc-assistant-wrapper .bc-assistant-window {
-        height: 60vh !important;
+    .bc-assistant-window {
+        height: 60vh;
     }
 }
 
 /* Landscape orientation specific fixes */
 @media (max-width: 767px) and (orientation: landscape) {
     .bc-assistant-wrapper {
-        bottom: 100px !important;
-        right: 20px !important;
+        bottom: 100px;
     }
     
-    .bc-assistant-wrapper .bc-assistant-window {
-        height: 80vh !important;
-        bottom: 60px !important;
+    .bc-assistant-window {
+        height: 80vh;
+        bottom: 60px;
     }
 }
 
-/* Theme variations */
-.bc-assistant-wrapper .bc-assistant-container.bc-assistant-light {
-    /* Light theme is default */
-}
-
-.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark {
-    color-scheme: dark !important;
-}
-
-.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-window {
-    background-color: #222 !important;
-    color: #fff !important;
-}
-
-.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-messages {
-    background-color: #333 !important;
-}
-
-.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-message-assistant .bc-message-content {
-    background-color: #444 !important;
-    color: #fff !important;
-}
-
-.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-input-container {
-    background-color: #222 !important;
-    border-top-color: #444 !important;
-}
-
-.bc-assistant-wrapper .bc-assistant-container.bc-assistant-dark .bc-assistant-input {
-    background-color: #333 !important;
-    border-color: #444 !important;
-    color: #fff !important;
-}
-
-/* Accessibility improvements */
-.bc-assistant-wrapper .bc-assistant-bubble:focus,
-.bc-assistant-wrapper .bc-assistant-close:focus,
-.bc-assistant-wrapper .bc-assistant-minimize:focus,
-.bc-assistant-wrapper .bc-assistant-send:focus,
-.bc-assistant-wrapper .bc-assistant-input:focus {
-    outline: 2px solid #A67C52 !important;
-    outline-offset: 2px !important;
+/* Print media query - hide assistant when printing */
+@media print {
+    .bc-assistant-wrapper {
+        display: none;
+    }
 }
 
 /* Animation for transitions */
-.bc-assistant-wrapper .bc-assistant-window {
-    transition: opacity 0.3s ease !important;
-}
-
-.bc-assistant-wrapper .bc-assistant-window.bc-fade-in {
-    opacity: 0 !important;
-    animation: bc-fade-in 0.3s forwards !important;
+.bc-assistant-window.bc-fade-in {
+    animation: bc-fade-in 0.3s forwards;
 }
 
 @keyframes bc-fade-in {
-    from { opacity: 0 !important; transform: translateY(10px) !important; }
-    to { opacity: 1 !important; transform: translateY(0) !important; }
-}
-
-/* Print media query to hide assistant when printing */
-@media print {
-    .bc-assistant-wrapper {
-        display: none !important;
+    from { 
+        opacity: 0; 
+        transform: translateY(10px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
     }
 }
 
-/* Edge-specific fixes */
-@supports (-ms-ime-align: auto) {
-    .bc-assistant-wrapper {
-        transform: translateZ(0) !important;
-    }
-}
-
-/* Fix for z-index stacking context */
-.bc-assistant-wrapper * {
-    z-index: auto !important;
-}
-
-/* Fix for elements that appear at the bottom of the page - prevents overlapping */
-.bc-assistant-wrapper.adjust-for-floating-elements {
-    bottom: 200px !important; /* Extra height to avoid other elements */
-}
-/* Optymalizacja pozycji przycisków dla różnych ekranów */
-.bc-assistant-wrapper[data-position="bottom-right"] {
-    right: 20px !important;
-    bottom: 100px !important; /* odstęp standardowy na desktop */
-}
-
-/* Optymalizacja pozycji na mobile, uniknięcie nachodzenia na stopkę */
-@media (max-width: 767px) {
-    .bc-assistant-wrapper[data-position="bottom-right"] {
-        bottom: 120px !important; /* minimalna wysokość nad stopką dla mobile */
-        right: 15px !important; /* nieco bliżej prawej krawędzi ekranu */
-    }
-
-    .bc-assistant-wrapper.adjust-for-floating-elements {
-        bottom: 160px !important; /* dodatkowy zapas, gdy są inne pływające elementy */
-    }
-
-    /* Zmniejszenie ikon i przycisków dla lepszej ergonomii na mobile */
-    .bc-assistant-wrapper .bc-assistant-bubble {
-        width: 45px !important;
-        height: 45px !important;
-        font-size: 18px !important;
-    }
-
-    .bc-assistant-wrapper .bc-assistant-window {
-        width: 90vw !important; /* pełniejsze wykorzystanie szerokości ekranu */
-        max-width: none !important; /* usunięcie ograniczenia */
-        height: 65vh !important; /* dopasowana wysokość okna czatu */
-        bottom: 70px !important; /* nieco wyżej, nad przyciskiem */
-    }
-}
-
-/* Dla bardzo wąskich ekranów (poniżej 480px) dodatkowe zabezpieczenie */
-@media (max-width: 480px) {
-    .bc-assistant-wrapper[data-position="bottom-right"] {
-        bottom: 140px !important; /* zapewnia bezpieczeństwo na najmniejszych ekranach */
-        right: 10px !important;
-    }
+/* Accessibility improvements */
+.bc-assistant-bubble:focus,
+.bc-assistant-close:focus,
+.bc-assistant-minimize:focus,
+.bc-assistant-send:focus,
+.bc-assistant-input:focus {
+    outline: 2px solid #A67C52;
+    outline-offset: 2px;
 }
