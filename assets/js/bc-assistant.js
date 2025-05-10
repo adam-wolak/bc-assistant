@@ -56,21 +56,27 @@ function initShadowDOM() {
         /**
          * Initialize component
          */
-        init() {
-            // Render initial UI
-            this.render();
-            
-            // Set up event listeners
-            this.addEventListeners();
-            
-            // Add welcome message
-            this.addMessage('assistant', this.getWelcomeMessage());
-            
-            // Log initialization in debug mode
-            if (this.config.debug) {
-                console.log('BC Assistant initialized with model:', this.config.model);
-            }
-        }
+init() {
+    // Render initial UI
+    this.render();
+    
+    // Set up event listeners
+    this.addEventListeners();
+    
+    // Add welcome message
+    this.addMessage('assistant', this.getWelcomeMessage());
+    
+    // Make chat window draggable
+    this.makeDraggable();
+    
+    // Set up voice capability
+    this.setupVoiceCapability();
+    
+    // Log initialization in debug mode
+    if (this.config.debug) {
+        console.log('BC Assistant initialized with model:', this.config.model);
+    }
+}
         
         /**
          * Get welcome message from config or global variable
@@ -90,381 +96,585 @@ function initShadowDOM() {
             return 'Witaj! W czym mogę pomóc?';
         }
         
-        /**
-         * Render component
-         */
-        render() {
-            // Set position as attribute for CSS
-            this.setAttribute('position', this.config.position || 'bottom-right');
+/**
+ * Set up voice functionality
+ */
+setupVoiceCapability() {
+    // Add voice button to the UI
+    const inputContainer = this.shadowRoot.querySelector('.input-container');
+    const voiceButton = document.createElement('button');
+    voiceButton.className = 'voice-button';
+    voiceButton.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"></path><path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"></path></svg>';
+    
+    // Insert before send button
+    const sendButton = inputContainer.querySelector('.send-button');
+    inputContainer.insertBefore(voiceButton, sendButton);
+    
+    // Set up voice recording
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+    
+    voiceButton.addEventListener('click', () => {
+        if (isRecording) {
+            // Stop recording
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                voiceButton.classList.remove('recording');
+                isRecording = false;
+            }
+        } else {
+            // Start recording
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    isRecording = true;
+                    voiceButton.classList.add('recording');
+                    
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+                    
+                    mediaRecorder.onstop = () => {
+                        // Combine audio chunks into a blob
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        
+                        // Send audio to server
+                        this.sendAudioToServer(audioBlob);
+                        
+                        // Release microphone
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    // Start recording
+                    mediaRecorder.start();
+                    
+                    // Auto-stop after 15 seconds if user forgets to stop
+                    setTimeout(() => {
+                        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                            mediaRecorder.stop();
+                            voiceButton.classList.remove('recording');
+                            isRecording = false;
+                        }
+                    }, 15000);
+                })
+                .catch(error => {
+                    console.error("Error accessing microphone:", error);
+                    
+                    // Show error message to user
+                    this.addMessage('assistant', 'Nie udało się uzyskać dostępu do mikrofonu. Upewnij się, że masz włączony mikrofon i zezwoliłeś na dostęp do niego.');
+                    
+                    isRecording = false;
+                    voiceButton.classList.remove('recording');
+                });
+        }
+    });
+}
+
+/**
+ * Send audio to server for processing
+ * @param {Blob} audioBlob Audio data to send
+ */
+sendAudioToServer(audioBlob) {
+    // Show typing indicator
+    this.showTypingIndicator();
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('action', this.config.action);
+    formData.append('audio', audioBlob);
+    formData.append('thread_id', this.state.threadId);
+    formData.append('nonce', this.config.nonce);
+    formData.append('is_voice', 'true');
+    
+    // Get context information
+    const context = this.getAttribute('context') || 'default';
+    const procedureName = this.getAttribute('procedure') || '';
+    
+    if (context !== 'default') {
+        formData.append('context', context);
+    }
+    
+    if (procedureName) {
+        formData.append('procedure_name', procedureName);
+    }
+    
+    // Update state
+    this.state.isTyping = true;
+    
+    // Send request
+    fetch(this.config.apiEndpoint, {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Hide typing indicator
+        this.hideTypingIndicator();
+        
+        // Update state
+        this.state.isTyping = false;
+        
+        // Handle response
+        if (data.success) {
+            // Add transcribed user message if available
+            if (data.data.transcription) {
+                this.addMessage('user', data.data.transcription);
+            }
             
-            // Set theme as attribute for CSS
-            this.setAttribute('theme', this.config.theme || 'light');
+            // Add assistant response
+            this.addMessage('assistant', data.data.message);
             
-            // Inject styles and HTML template
-            this.shadowRoot.innerHTML = `
-                <style>
-                    /* Base container */
-                    :host {
-                        position: fixed;
-                        z-index: 999999;
-                        display: block;
-                        box-sizing: border-box;
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-                        line-height: 1.5;
-                        font-size: 14px;
-                    }
-                    
-                    /* Position variations */
-                    :host([position="bottom-right"]) {
-                        right: 20px;
-                        bottom: 20px;
-                    }
-                    
-                    :host([position="bottom-left"]) {
-                        left: 20px;
-                        bottom: 20px;
-                    }
-                    
-                    :host([position="top-right"]) {
-                        right: 20px;
-                        top: 20px;
-                    }
-                    
-                    :host([position="top-left"]) {
-                        left: 20px;
-                        top: 20px;
-                    }
-                    
-                    /* Wrapper */
-                    .wrapper {
-                        position: relative;
-                    }
-                    
-                    /* Chat bubble */
-                    .bubble {
-                        width: 60px;
-                        height: 60px;
-                        border-radius: 50%;
-                        background-color: #A67C52;
-                        color: white;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        cursor: pointer;
-                        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-                        transition: transform 0.3s ease;
-                        font-size: 24px;
-                    }
-                    
-                    .bubble:hover {
-                        transform: scale(1.1);
-                    }
-                    
-                    /* Chat window */
-                    .window {
-                        position: absolute;
-                        bottom: 70px;
-                        right: 0;
-                        width: 350px;
-                        height: 500px;
-                        border-radius: 10px;
-                        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
-                        background-color: #fff;
-                        display: none;
-                        flex-direction: column;
-                        overflow: hidden;
-                        transition: opacity 0.3s ease, transform 0.3s ease;
-                    }
-                    
-                    :host([position="bottom-left"]) .window {
-                        right: auto;
-                        left: 0;
-                    }
-                    
-                    :host([position="top-right"]) .window {
-                        bottom: auto;
-                        top: 70px;
-                    }
-                    
-                    :host([position="top-left"]) .window {
-                        bottom: auto;
-                        top: 70px;
-                        right: auto;
-                        left: 0;
-                    }
-                    
-                    /* Window header */
-                    .header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 15px;
-                        background-color: #A67C52;
-                        color: white;
-                        border-top-left-radius: 10px;
-                        border-top-right-radius: 10px;
-                    }
-                    
-                    .title {
-                        font-weight: bold;
-                        font-size: 16px;
-                    }
-                    
-                    .controls {
-                        display: flex;
-                    }
-                    
-                    .control-button {
-                        background: none;
-                        border: none;
-                        color: white;
-                        cursor: pointer;
-                        margin-left: 10px;
-                        font-size: 16px;
-                        padding: 0;
-                        line-height: 1;
-                    }
-                    
-                    /* Messages container */
-                    .messages {
-                        flex: 1;
-                        overflow-y: auto;
-                        padding: 15px;
-                        display: flex;
-                        flex-direction: column;
-                        background-color: #f5f5f5;
-                        scroll-behavior: smooth;
-                    }
-                    
-                    /* Message styling */
-                    .message {
-                        margin-bottom: 15px;
-                        max-width: 80%;
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    
-                    .message.user {
-                        align-self: flex-end;
-                    }
-                    
-                    .message.assistant {
-                        align-self: flex-start;
-                    }
-                    
-                    .message-content {
-                        padding: 10px 15px;
-                        border-radius: 18px;
-                        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-                        word-wrap: break-word;
-                        line-height: 1.4;
-                    }
-                    
-                    .message.user .message-content {
-                        background-color: #A67C52;
-                        color: white;
-                        border-bottom-right-radius: 5px;
-                    }
-                    
-                    .message.assistant .message-content {
-                        background-color: white;
-                        color: #333;
-                        border-bottom-left-radius: 5px;
-                    }
-                    
-                    .message-timestamp {
-                        font-size: 12px;
-                        color: #888;
-                        margin-top: 5px;
-                        text-align: right;
-                    }
-                    
-                    /* Input area */
-                    .input-container {
-                        display: flex;
-                        padding: 10px;
-                        border-top: 1px solid #eee;
-                        background-color: white;
-                    }
-                    
-                    .input {
-                        flex: 1;
-                        border: 1px solid #ddd;
-                        border-radius: 20px;
-                        padding: 10px 15px;
-                        font-size: 14px;
-                        resize: none;
-                        outline: none;
-                        min-height: 40px;
-                        max-height: 100px;
-                        overflow-y: auto;
-                        font-family: inherit;
-                    }
-                    
-                    .input:focus {
-                        border-color: #A67C52;
-                        box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.1);
-                    }
-                    
-                    .send-button {
-                        background-color: #A67C52;
-                        color: white;
-                        border: none;
-                        border-radius: 50%;
-                        width: 40px;
-                        height: 40px;
-                        margin-left: 10px;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                    }
-                    
-                    /* Message content formatting */
-                    .message-content a {
-                        color: inherit;
-                        text-decoration: underline;
-                    }
-                    
-                    .message-content code {
-                        background-color: rgba(0, 0, 0, 0.05);
-                        padding: 2px 4px;
-                        border-radius: 3px;
-                        font-family: monospace;
-                    }
-                    
-                    .message-content pre {
-                        background-color: #1E1E1E;
-                        padding: 10px;
-                        border-radius: 5px;
-                        overflow-x: auto;
-                        margin: 10px 0;
-                    }
-                    
-                    .message-content pre code {
-                        background-color: transparent;
-                        color: #FFFFFF;
-                        padding: 0;
-                    }
-                    
-                    /* Typing indicator */
-                    .typing-indicator {
-                        display: flex;
-                        align-items: center;
-                        margin-bottom: 15px;
-                        align-self: flex-start;
-                    }
-                    
-                    .typing-indicator .message-content {
-                        padding: 8px 15px;
-                    }
-                    
-                    .typing-dots {
-                        display: flex;
-                    }
-                    
-                    .typing-dot {
-                        width: 8px;
-                        height: 8px;
-                        border-radius: 50%;
-                        background-color: #A67C52;
-                        margin: 0 2px;
-                        animation: typing 1.4s infinite ease-in-out both;
-                    }
-                    
-                    .typing-dot:nth-child(2) {
-                        animation-delay: 0.2s;
-                    }
-                    
-                    .typing-dot:nth-child(3) {
-                        animation-delay: 0.4s;
-                    }
-                    
-                    @keyframes typing {
-                        0%, 80%, 100% {
-                            transform: scale(0.75);
-                            opacity: 0.2;
-                        }
-                        50% {
-                            transform: scale(1);
-                            opacity: 1;
-                        }
-                    }
-                    
-                    /* Dark theme */
-                    :host([theme="dark"]) .window {
-                        background-color: #222;
-                        color: #fff;
-                    }
-                    
-                    :host([theme="dark"]) .messages {
-                        background-color: #333;
-                    }
-                    
-                    :host([theme="dark"]) .message.assistant .message-content {
-                        background-color: #444;
-                        color: #fff;
-                    }
-                    
-                    :host([theme="dark"]) .input-container {
-                        background-color: #222;
-                        border-top-color: #444;
-                    }
-                    
-                    :host([theme="dark"]) .input {
-                        background-color: #333;
-                        border-color: #444;
-                        color: #fff;
-                    }
-                    
-                    /* Mobile styles */
-                    @media (max-width: 767px) {
-                        :host {
-                            bottom: 140px;
-                        }
-                        
-                        .bubble {
-                            width: 50px;
-                            height: 50px;
-                            font-size: 20px;
-                        }
-                        
-                        .window {
-                            width: 85vw;
-                            max-width: 350px;
-                            height: 70vh;
-                        }
-                        
-                        .message {
-                            max-width: 90%;
-                        }
-                    }
-                </style>
-                
-                <div class="wrapper">
-                    <div class="bubble">
-                        ${this.getIconHTML()}
-                    </div>
-                    
-                    <div class="window">
-                        <div class="header">
-                            <div class="title">${this.config.title || 'BC Assistant'}</div>
-                            <div class="controls">
-                                <button class="control-button minimize-button">−</button>
-                                <button class="control-button close-button">×</button>
-                            </div>
-                        </div>
-                        
-                        <div class="messages"></div>
-                        
-                        <div class="input-container">
-                            <textarea class="input" placeholder="Wpisz swoje pytanie..."></textarea>
-                            <button class="send-button">→</button>
-                        </div>
+            // Store thread ID if provided
+            if (data.data.thread_id) {
+                this.state.threadId = data.data.thread_id;
+                localStorage.setItem('bc_assistant_thread_id', this.state.threadId);
+            }
+        } else {
+            // Show error message
+            this.addMessage('assistant', 'Przepraszam, wystąpił błąd. Spróbuj ponownie później.');
+            
+            // Log error
+            if (this.config.debug) {
+                console.error('BC Assistant API Error:', data);
+            }
+        }
+    })
+    .catch(error => {
+        // Hide typing indicator
+        this.hideTypingIndicator();
+        
+        // Update state
+        this.state.isTyping = false;
+        
+        // Show error message
+        this.addMessage('assistant', 'Przepraszam, wystąpił błąd połączenia. Spróbuj ponownie później.');
+        
+        // Log error
+        if (this.config.debug) {
+            console.error('BC Assistant Error:', error);
+        }
+    });
+}
+		
+/**
+ * Render component
+ */
+render() {
+    // Set position as attribute for CSS
+    this.setAttribute('position', this.config.position || 'bottom-right');
+    
+    // Set theme as attribute for CSS
+    this.setAttribute('theme', this.config.theme || 'light');
+    
+    // Inject styles and HTML template
+    this.shadowRoot.innerHTML = `
+        <style>
+            /* Base container */
+            :host {
+                position: fixed;
+                z-index: 999999;
+                display: block;
+                box-sizing: border-box;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+                line-height: 1.5;
+                font-size: 14px;
+            }
+            
+            /* Position variations */
+            :host([position="bottom-right"]) {
+                right: 20px;
+                bottom: 20px;
+            }
+            
+            :host([position="bottom-left"]) {
+                left: 20px;
+                bottom: 20px;
+            }
+            
+            :host([position="top-right"]) {
+                right: 20px;
+                top: 20px;
+            }
+            
+            :host([position="top-left"]) {
+                left: 20px;
+                top: 20px;
+            }
+            
+            /* Wrapper */
+            .wrapper {
+                position: relative;
+            }
+            
+            /* Chat bubble */
+            .bubble {
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                background-color: #A67C52;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+                transition: transform 0.3s ease;
+                font-size: 24px;
+            }
+            
+            .bubble:hover {
+                transform: scale(1.1);
+            }
+            
+            /* Chat window */
+            .window {
+                position: absolute;
+                bottom: 70px;
+                right: 0;
+                width: 350px;
+                height: 500px;
+                border-radius: 10px;
+                box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+                background-color: #fff;
+                display: none;
+                flex-direction: column;
+                overflow: hidden;
+                transition: opacity 0.3s ease, transform 0.3s ease;
+            }
+            
+            :host([position="bottom-left"]) .window {
+                right: auto;
+                left: 0;
+            }
+            
+            :host([position="top-right"]) .window {
+                bottom: auto;
+                top: 70px;
+            }
+            
+            :host([position="top-left"]) .window {
+                bottom: auto;
+                top: 70px;
+                right: auto;
+                left: 0;
+            }
+            
+            /* Window header */
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px;
+                background-color: #A67C52;
+                color: white;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+            }
+            
+            .title {
+                font-weight: bold;
+                font-size: 16px;
+            }
+            
+            .controls {
+                display: flex;
+            }
+            
+            .control-button {
+                background: none;
+                border: none;
+                color: white;
+                cursor: pointer;
+                margin-left: 10px;
+                font-size: 16px;
+                padding: 0;
+                line-height: 1;
+            }
+            
+            /* Messages container */
+            .messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 15px;
+                display: flex;
+                flex-direction: column;
+                background-color: #f5f5f5;
+                scroll-behavior: smooth;
+            }
+            
+            /* Message styling */
+            .message {
+                margin-bottom: 15px;
+                max-width: 80%;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .message.user {
+                align-self: flex-end;
+            }
+            
+            .message.assistant {
+                align-self: flex-start;
+            }
+            
+            .message-content {
+                padding: 10px 15px;
+                border-radius: 18px;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                word-wrap: break-word;
+                line-height: 1.4;
+            }
+            
+            .message.user .message-content {
+                background-color: #A67C52;
+                color: white;
+                border-bottom-right-radius: 5px;
+            }
+            
+            .message.assistant .message-content {
+                background-color: white;
+                color: #333;
+                border-bottom-left-radius: 5px;
+            }
+            
+            .message-timestamp {
+                font-size: 12px;
+                color: #888;
+                margin-top: 5px;
+                text-align: right;
+            }
+            
+            /* Input area */
+            .input-container {
+                display: flex;
+                padding: 10px;
+                border-top: 1px solid #eee;
+                background-color: white;
+            }
+            
+            .input {
+                flex: 1;
+                border: 1px solid #ddd;
+                border-radius: 20px;
+                padding: 10px 15px;
+                font-size: 14px;
+                resize: none;
+                outline: none;
+                min-height: 40px;
+                max-height: 100px;
+                overflow-y: auto;
+                font-family: inherit;
+            }
+            
+            .input:focus {
+                border-color: #A67C52;
+                box-shadow: 0 0 0 2px rgba(166, 124, 82, 0.1);
+            }
+            
+            .send-button {
+                background-color: #A67C52;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                margin-left: 10px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+/* Voice button styling */
+.voice-button {
+    background-color: #A67C52;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    margin-left: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+.voice-button:hover {
+    background-color: #8a6643;
+}
+
+.voice-button.recording {
+    background-color: #e74c3c;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+            
+            /* Message content formatting */
+            .message-content a {
+                color: inherit;
+                text-decoration: underline;
+            }
+            
+            .message-content code {
+                background-color: rgba(0, 0, 0, 0.05);
+                padding: 2px 4px;
+                border-radius: 3px;
+                font-family: monospace;
+            }
+            
+            .message-content pre {
+                background-color: #1E1E1E;
+                padding: 10px;
+                border-radius: 5px;
+                overflow-x: auto;
+                margin: 10px 0;
+            }
+            
+            .message-content pre code {
+                background-color: transparent;
+                color: #FFFFFF;
+                padding: 0;
+            }
+            
+            /* Typing indicator */
+            .typing-indicator {
+                display: flex;
+                align-items: center;
+                margin-bottom: 15px;
+                align-self: flex-start;
+            }
+            
+            .typing-indicator .message-content {
+                padding: 8px 15px;
+            }
+            
+            .typing-dots {
+                display: flex;
+            }
+            
+            .typing-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background-color: #A67C52;
+                margin: 0 2px;
+                animation: typing 1.4s infinite ease-in-out both;
+            }
+            
+            .typing-dot:nth-child(2) {
+                animation-delay: 0.2s;
+            }
+            
+            .typing-dot:nth-child(3) {
+                animation-delay: 0.4s;
+            }
+            
+            @keyframes typing {
+                0%, 80%, 100% {
+                    transform: scale(0.75);
+                    opacity: 0.2;
+                }
+                50% {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+            }
+            
+            /* Dark theme */
+            :host([theme="dark"]) .window {
+                background-color: #222;
+                color: #fff;
+            }
+            
+            :host([theme="dark"]) .messages {
+                background-color: #333;
+            }
+            
+            :host([theme="dark"]) .message.assistant .message-content {
+                background-color: #444;
+                color: #fff;
+            }
+            
+            :host([theme="dark"]) .input-container {
+                background-color: #222;
+                border-top-color: #444;
+            }
+            
+            :host([theme="dark"]) .input {
+                background-color: #333;
+                border-color: #444;
+                color: #fff;
+            }
+            
+@media (max-width: 767px) {
+    :host {
+        position: fixed !important;
+        bottom: 140px !important;
+        z-index: 999999 !important;
+    }
+    
+    .bubble {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+        position: fixed !important;
+    }
+    
+    .window {
+        width: 85vw;
+        max-width: 350px;
+        height: 70vh;
+        position: fixed !important;
+    }
+    
+    .message {
+        max-width: 90%;
+    }
+}
+        </style>
+        
+        <div class="wrapper">
+            <div class="bubble">
+                ${this.getIconHTML()}
+            </div>
+            
+            <div class="window">
+                <div class="header">
+                    <div class="title">${this.config.title || 'BC Assistant'}</div>
+                    <div class="controls">
+                        <button class="control-button minimize-button">−</button>
+                        <button class="control-button close-button">×</button>
                     </div>
                 </div>
-            `;
-        }
+                
+                <div class="messages"></div>
+                
+                <div class="input-container">
+                    <textarea class="input" placeholder="Wpisz swoje pytanie..."></textarea>
+                    <button class="send-button">→</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
         
         /**
          * Get icon HTML based on configuration
@@ -535,8 +745,47 @@ function initShadowDOM() {
             }
             
             // Window resize event
-            window.addEventListener('resize', () => this.adjustLayout());
-        }
+            window.addEventListener('resize', () => this.adjustLayout())
+
+/**
+ * Make chat window draggable
+ */
+makeDraggable() {
+    const window = this.shadowRoot.querySelector('.window');
+    const header = this.shadowRoot.querySelector('.header');
+    
+    if (!window || !header) return;
+    
+    let isDragging = false;
+    let offsetX, offsetY;
+    
+    header.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        offsetX = e.clientX - window.getBoundingClientRect().left;
+        offsetY = e.clientY - window.getBoundingClientRect().top;
+        
+        window.style.transition = 'none';
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const x = e.clientX - offsetX;
+        const y = e.clientY - offsetY;
+        
+        window.style.left = `${x}px`;
+        window.style.top = `${y}px`;
+        window.style.right = 'auto';
+        window.style.bottom = 'auto';
+    });
+    
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        window.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    });
+}
+
+    }
         
         /**
          * Toggle chat window
@@ -1058,6 +1307,157 @@ function initTraditionalDOM() {
                $wrapper.removeClass('bc-mobile');
            }
        }
+	   
+	   // Dodaj przycisk głosowy do interfejsu
+const $inputContainer = $wrapper.find('.bc-assistant-input-container');
+const $voiceButton = $('<button class="bc-assistant-voice">');
+$voiceButton.html('<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"></path><path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"></path></svg>');
+$voiceButton.insertBefore($sendBtn);
+
+// Konfiguracja nagrywania głosu
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+
+$voiceButton.on('click', function() {
+    if (isRecording) {
+        // Stop recording
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            $voiceButton.removeClass('recording');
+            isRecording = false;
+        }
+    } else {
+        // Start recording
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                isRecording = true;
+                $voiceButton.addClass('recording');
+                
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    // Combine audio chunks into a blob
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    
+                    // Send audio to server
+                    sendAudioToServer(audioBlob);
+                    
+                    // Release microphone
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                // Start recording
+                mediaRecorder.start();
+                
+                // Auto-stop after 15 seconds if user forgets to stop
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                        $voiceButton.removeClass('recording');
+                        isRecording = false;
+                    }
+                }, 15000);
+            })
+            .catch(error => {
+                console.error("Error accessing microphone:", error);
+                
+                // Show error message to user
+                addMessage('assistant', 'Nie udało się uzyskać dostępu do mikrofonu. Upewnij się, że masz włączony mikrofon i zezwoliłeś na dostęp do niego.');
+                
+                isRecording = false;
+                $voiceButton.removeClass('recording');
+            });
+    }
+});
+
+function sendAudioToServer(audioBlob) {
+    // Show typing indicator
+    showTypingIndicator();
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('action', bcAssistantData.action);
+    formData.append('audio', audioBlob);
+    formData.append('thread_id', threadId);
+    formData.append('nonce', bcAssistantData.nonce);
+    formData.append('is_voice', 'true');
+    
+    // Get page context
+    const context = $wrapper.data('context') || 'default';
+    const procedureName = $wrapper.data('procedure') || '';
+    
+    if (context !== 'default') {
+        formData.append('context', context);
+    }
+    
+    if (procedureName) {
+        formData.append('procedure_name', procedureName);
+    }
+    
+    // Update state
+    isTyping = true;
+    
+    // Send request
+    fetch(bcAssistantData.apiEndpoint, {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Hide typing indicator
+        hideTypingIndicator();
+        
+        // Update state
+        isTyping = false;
+        
+        // Handle response
+        if (data.success) {
+            // Add transcribed user message if available
+            if (data.data.transcription) {
+                addMessage('user', data.data.transcription);
+            }
+            
+            // Add assistant response
+            addMessage('assistant', data.data.message);
+            
+            // Store thread ID if provided
+            if (data.data.thread_id) {
+                threadId = data.data.thread_id;
+                localStorage.setItem('bc_assistant_thread_id', threadId);
+            }
+        } else {
+            // Show error message
+            addMessage('assistant', 'Przepraszam, wystąpił błąd. Spróbuj ponownie później.');
+            
+            // Log error
+            if (bcAssistantData.debug) {
+                console.error('BC Assistant API Error:', data);
+            }
+        }
+    })
+    .catch(error => {
+        // Hide typing indicator
+        hideTypingIndicator();
+        
+        // Update state
+        isTyping = false;
+        
+        // Show error message
+        addMessage('assistant', 'Przepraszam, wystąpił błąd połączenia. Spróbuj ponownie później.');
+        
+        // Log error
+        if (bcAssistantData.debug) {
+            console.error('BC Assistant Error:', error);
+        }
+    });
+}
        
        async function sendMessage() {
            const messageText = $input.val().trim();

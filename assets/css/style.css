@@ -443,3 +443,39 @@
     outline: 2px solid #A67C52;
     outline-offset: 2px;
 }
+/* Voice button styling */
+.bc-assistant-voice {
+    background-color: #A67C52;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+.bc-assistant-voice:hover {
+    background-color: #8a6643;
+}
+
+.bc-assistant-voice.recording {
+    background-color: #e74c3c;
+    animation: bc-pulse 1.5s infinite;
+}
+
+@keyframes bc-pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}

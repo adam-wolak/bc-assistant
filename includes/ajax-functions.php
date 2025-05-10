@@ -21,32 +21,57 @@ function bc_assistant_ajax_send_message() {
         exit;
     }
     
-    // Get message and thread_id
-    $message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
-    $thread_id = isset($_POST['thread_id']) ? sanitize_text_field($_POST['thread_id']) : null;
+    // Check if this is a voice message
+    $is_voice = isset($_POST['is_voice']) && $_POST['is_voice'] === 'true';
     
-    // Get page context data
-    $context = isset($_POST['context']) ? sanitize_text_field($_POST['context']) : 'default';
-    $procedure_name = isset($_POST['procedure_name']) ? sanitize_text_field($_POST['procedure_name']) : '';
-    
-    // Check for empty message
-    if (empty($message)) {
-        BC_Assistant_Helper::log('Empty message');
-        wp_send_json_error(array('message' => 'Wiadomość nie może być pusta'));
-        exit;
+    if ($is_voice) {
+        // Handle voice message
+        if (!isset($_FILES['audio']) || $_FILES['audio']['error'] !== UPLOAD_ERR_OK) {
+            BC_Assistant_Helper::log('Audio file upload error');
+            wp_send_json_error(array('message' => 'Błąd przesyłania pliku audio'));
+            exit;
+        }
+        
+        // Get thread ID
+        $thread_id = isset($_POST['thread_id']) ? sanitize_text_field($_POST['thread_id']) : null;
+        
+        // Get page context data
+        $context = isset($_POST['context']) ? sanitize_text_field($_POST['context']) : 'default';
+        $procedure_name = isset($_POST['procedure_name']) ? sanitize_text_field($_POST['procedure_name']) : '';
+        
+        // Process audio file with OpenAI
+        $response = bc_assistant_process_audio($_FILES['audio']['tmp_name'], $thread_id, array(
+            'context' => $context,
+            'procedure_name' => $procedure_name
+        ));
+    } else {
+        // Handle text message
+        $message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
+        $thread_id = isset($_POST['thread_id']) ? sanitize_text_field($_POST['thread_id']) : null;
+        
+        // Get page context data
+        $context = isset($_POST['context']) ? sanitize_text_field($_POST['context']) : 'default';
+        $procedure_name = isset($_POST['procedure_name']) ? sanitize_text_field($_POST['procedure_name']) : '';
+        
+        // Check for empty message
+        if (empty($message)) {
+            BC_Assistant_Helper::log('Empty message');
+            wp_send_json_error(array('message' => 'Wiadomość nie może być pusta'));
+            exit;
+        }
+        
+        // Log the model being used
+        BC_Assistant_Helper::log('Using model: ' . BC_Assistant_Config::get_current_model());
+        
+        // Prepare page context for system message selection
+        $page_context = array(
+            'context' => $context,
+            'procedure_name' => $procedure_name
+        );
+        
+        // Send message to API
+        $response = bc_assistant_api_request($message, $thread_id, $page_context);
     }
-    
-    // Log the model being used
-    BC_Assistant_Helper::log('Using model: ' . BC_Assistant_Config::get_current_model());
-    
-    // Prepare page context for system message selection
-    $page_context = array(
-        'context' => $context,
-        'procedure_name' => $procedure_name
-    );
-    
-    // Send message to API
-    $response = bc_assistant_api_request($message, $thread_id, $page_context);
     
     // Check for errors
     if (is_wp_error($response)) {
@@ -61,6 +86,26 @@ function bc_assistant_ajax_send_message() {
         ));
         exit;
     }
+    
+    // Log success
+    BC_Assistant_Helper::log('API response received successfully');
+    
+    // Return response
+    wp_send_json_success($response);
+    exit;
+}
+    
+    // Log the model being used
+    BC_Assistant_Helper::log('Using model: ' . BC_Assistant_Config::get_current_model());
+    
+    // Prepare page context for system message selection
+    $page_context = array(
+        'context' => $context,
+        'procedure_name' => $procedure_name
+    );
+    
+    // Send message to API
+    $response = bc_assistant_api_request($message, $thread_id, $page_context);
     
     // Log success
     BC_Assistant_Helper::log('API response received successfully');
