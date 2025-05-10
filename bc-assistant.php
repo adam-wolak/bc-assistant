@@ -272,13 +272,13 @@ public function enqueue_frontend_assets() {
     }
     
     // Enqueue unified script
-wp_enqueue_script(
-    'bc-assistant-script',
-    BC_ASSISTANT_URL . 'assets/js/bc-assistant.js',
-    array('jquery'), // jQuery jest nadal potrzebne dla tradycyjnego trybu
-    BC_ASSISTANT_VERSION,
-    true
-);
+    wp_enqueue_script(
+        'bc-assistant-script',
+        BC_ASSISTANT_URL . 'assets/js/bc-assistant.js',
+        array('jquery'),
+        BC_ASSISTANT_VERSION,
+        true
+    );
     
     // Pass data to script
     wp_localize_script('bc-assistant-script', 'bcAssistantData', array(
@@ -293,19 +293,30 @@ wp_enqueue_script(
         'displayMode' => $config['display_mode'],
         'theme' => $config['theme'],
         'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
-        'useShadowDOM' => $use_shadow_dom,
+        'useShadowDOM' => $use_shadow_dom
     ));
 }
+
+/**
+ * Enqueue admin assets
+ */
+public function enqueue_admin_assets() {
+    wp_enqueue_style(
+        'bc-assistant-admin-style',
+        BC_ASSISTANT_URL . 'assets/css/admin.css',
+        array(),
+        BC_ASSISTANT_VERSION
+    );
     
-public function render_chat_component()  wp_enqueue_script(
-            'bc-assistant-admin-script',
-            BC_ASSISTANT_URL . 'assets/js/admin.js',
-            array('jquery'),
-            BC_ASSISTANT_VERSION,
-            true
-        );
-    }
-    
+    wp_enqueue_script(
+        'bc-assistant-admin-script',
+        BC_ASSISTANT_URL . 'assets/js/admin.js',
+        array('jquery'),
+        BC_ASSISTANT_VERSION,
+        true
+    );
+}
+
 /**
  * Render chat component in footer
  */
