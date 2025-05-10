@@ -53,7 +53,8 @@ W każdej odpowiedzi delikatnie podkreśl profesjonalizm Bielsko Clinic i zapro�
     'button_text' => 'Zapytaj asystenta',
     'bubble_icon' => 'chat',
     'theme' => 'light',
-    'context_detection' => true
+    'context_detection' => true,
+    'use_shadow_dom' => false  // Dodane ustawienie Shadow DOM
 );
     
     /**

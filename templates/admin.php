@@ -108,6 +108,12 @@ if (isset($_POST['bc_assistant_save_settings']) && current_user_can('manage_opti
             BC_Assistant_Config::set('theme', $theme);
         }
         
+		// Save Shadow DOM option
+		if (isset($_POST['bc_assistant_use_shadow_dom'])) {
+			BC_Assistant_Config::set('use_shadow_dom', 1);
+		} else {
+			BC_Assistant_Config::set('use_shadow_dom', 0);
+		}
         // Wyświetl komunikat sukcesu
         add_settings_error(
             'bc_assistant_settings',
@@ -160,6 +166,7 @@ $available_models = BC_Assistant_Config::get_available_models();
                         <p class="description">Wprowadź ID asystenta z platformy OpenAI (tylko dla API Assistants).</p>
                     </td>
                 </tr>
+
                 <tr valign="top">
                     <th scope="row">Model AI</th>
                     <td>
@@ -287,6 +294,17 @@ $available_models = BC_Assistant_Config::get_available_models();
                         <p class="description">Wybierz motyw kolorystyczny dla asystenta.</p>
                     </td>
                 </tr>
+				<tr valign="top">
+					<th scope="row">Użyj Shadow DOM</th>
+					<td>
+						<label>
+							<input type="checkbox" name="bc_assistant_use_shadow_dom" value="1" 
+							<?php checked(BC_Assistant_Config::get('use_shadow_dom'), 1); ?> />
+							Używaj izolacji Shadow DOM
+						</label>
+						<p class="description">Shadow DOM zapewnia lepszą izolację stylów, co pomaga uniknąć konfliktów z motywem i innymi wtyczkami.</p>
+					</td>
+				</tr>
             </table>
         <?php elseif ($active_tab == 'debug') : ?>
             <!-- Zakładka Diagnostyka -->

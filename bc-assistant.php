@@ -245,68 +245,59 @@ class BC_Assistant_Core {
     /**
      * Enqueue frontend assets
      */
-    public function enqueue_frontend_assets() {
-        // Font Awesome for icons
-        wp_enqueue_style(
-            'font-awesome',
-            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
-            array(),
-            '5.15.4'
-        );
-        
-        // Main stylesheet
+/**
+ * Enqueue frontend assets
+ */
+public function enqueue_frontend_assets() {
+    // Font Awesome for icons
+    wp_enqueue_style(
+        'font-awesome',
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+        array(),
+        '5.15.4'
+    );
+    
+    // Get configuration
+    $config = BC_Assistant_Config::get_all();
+    $use_shadow_dom = BC_Assistant_Config::get('use_shadow_dom');
+
+    // Main stylesheet - only needed for traditional DOM implementation
+    if (!$use_shadow_dom) {
         wp_enqueue_style(
             'bc-assistant-style',
             BC_ASSISTANT_URL . 'assets/css/style.css',
             array(),
             BC_ASSISTANT_VERSION
         );
-        
-        // Main script - use shadow DOM version if enabled
-        $use_shadow_dom = BC_Assistant_Config::get('use_shadow_dom');
-        
-        $script_file = $use_shadow_dom ? 'shadow-dom.js' : 'script.js';
-        
-        wp_enqueue_script(
-            'bc-assistant-script',
-            BC_ASSISTANT_URL . 'assets/js/' . $script_file,
-            array('jquery'),
-            BC_ASSISTANT_VERSION,
-            true
-        );
-        
-        // Get configuration data
-        $config = BC_Assistant_Config::get_all();
-        
-        // Pass data to script
-        wp_localize_script('bc-assistant-script', 'bcAssistantData', array(
-            'model' => $config['model'],
-            'position' => isset($config['bubble_position']) ? $config['bubble_position'] : 'bottom-right',
-            'title' => 'Asystent Bielsko Clinic',
-            'welcomeMessage' => $config['welcome_message_default'],
-            'apiEndpoint' => admin_url('admin-ajax.php'),
-            'action' => 'bc_assistant_send_message',
-            'nonce' => wp_create_nonce('bc_assistant_nonce'),
-            'debug' => defined('WP_DEBUG') && WP_DEBUG,
-            'displayMode' => $config['display_mode'],
-            'theme' => $config['theme'],
-            'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
-            'useShadowDOM' => $use_shadow_dom,
-        ));
     }
     
-    /**
-     * Enqueue admin assets
-     */
-    public function enqueue_admin_assets() {
-        wp_enqueue_style(
-            'bc-assistant-admin-style',
-            BC_ASSISTANT_URL . 'assets/css/admin.css',
-            array(),
-            BC_ASSISTANT_VERSION
-        );
-        
-        wp_enqueue_script(
+    // Enqueue unified script
+wp_enqueue_script(
+    'bc-assistant-script',
+    BC_ASSISTANT_URL . 'assets/js/bc-assistant.js',
+    array('jquery'), // jQuery jest nadal potrzebne dla tradycyjnego trybu
+    BC_ASSISTANT_VERSION,
+    true
+);
+    
+    // Pass data to script
+    wp_localize_script('bc-assistant-script', 'bcAssistantData', array(
+        'model' => $config['model'],
+        'position' => isset($config['bubble_position']) ? $config['bubble_position'] : 'bottom-right',
+        'title' => 'Asystent Bielsko Clinic',
+        'welcomeMessage' => $config['welcome_message_default'],
+        'apiEndpoint' => admin_url('admin-ajax.php'),
+        'action' => 'bc_assistant_send_message',
+        'nonce' => wp_create_nonce('bc_assistant_nonce'),
+        'debug' => defined('WP_DEBUG') && WP_DEBUG,
+        'displayMode' => $config['display_mode'],
+        'theme' => $config['theme'],
+        'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
+        'useShadowDOM' => $use_shadow_dom,
+    ));
+}
+    
+public function render_chat_component()  wp_enqueue_script(
             'bc-assistant-admin-script',
             BC_ASSISTANT_URL . 'assets/js/admin.js',
             array('jquery'),
@@ -315,33 +306,33 @@ class BC_Assistant_Core {
         );
     }
     
-    /**
-     * Render chat component in footer
-     */
-    public function render_chat_component() {
-        static $already_rendered = false;
-        
-        // Prevent multiple renderings
-        if ($already_rendered || BC_Assistant_Config::get('display_mode') !== 'bubble') {
-            return;
-        }
-        
-        // Get configuration
-        $config = BC_Assistant_Config::get_all();
-        
-        // Use shadow DOM if enabled
-        $use_shadow_dom = BC_Assistant_Config::get('use_shadow_dom');
-        
-        if ($use_shadow_dom) {
-            // For shadow DOM, we just need to add a custom element
-            echo '<bc-assistant-widget></bc-assistant-widget>';
-        } else {
-            // For traditional DOM, include the template
-            include BC_ASSISTANT_PATH . 'templates/assistant-wrapper.php';
-        }
-        
-        $already_rendered = true;
+/**
+ * Render chat component in footer
+ */
+public function render_chat_component() {
+    static $already_rendered = false;
+    
+    // Prevent multiple renderings
+    if ($already_rendered || BC_Assistant_Config::get('display_mode') !== 'bubble') {
+        return;
     }
+    
+    // Get configuration
+    $config = BC_Assistant_Config::get_all();
+    
+    // Use shadow DOM if enabled
+    $use_shadow_dom = BC_Assistant_Config::get('use_shadow_dom');
+    
+    if ($use_shadow_dom) {
+        // For shadow DOM, we just need to add a custom element
+        echo '<bc-assistant-widget></bc-assistant-widget>';
+    } else {
+        // For traditional DOM, include the template
+        include BC_ASSISTANT_PATH . 'templates/assistant-wrapper.php';
+    }
+    
+    $already_rendered = true;
+}
     
     /**
      * Handle shortcode
