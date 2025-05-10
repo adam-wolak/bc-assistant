@@ -212,8 +212,10 @@ class BC_Assistant_Core {
             ['sanitize_callback' => 'sanitize_text_field', 'default' => 'light']);
         
         // Advanced settings
-        register_setting('bc_assistant_settings', 'bc_assistant_use_shadow_dom', 
-            ['sanitize_callback' => 'rest_sanitize_boolean', 'default' => true]);
+register_setting('bc_assistant_settings', 'bc_assistant_use_shadow_dom', 
+    ['sanitize_callback' => function($value) { 
+        return $value ? true : false;
+    }, 'default' => true]);
     }
     
     /**

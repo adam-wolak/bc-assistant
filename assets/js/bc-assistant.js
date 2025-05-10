@@ -700,57 +700,59 @@ render() {
         /**
          * Add event listeners
          */
-        addEventListeners() {
-            // Get elements
-            const bubble = this.shadowRoot.querySelector('.bubble');
-            const closeBtn = this.shadowRoot.querySelector('.close-button');
-            const minimizeBtn = this.shadowRoot.querySelector('.minimize-button');
-            const sendBtn = this.shadowRoot.querySelector('.send-button');
-            const input = this.shadowRoot.querySelector('.input');
-            
-            // Toggle chat window
-            if (bubble) {
-                bubble.addEventListener('click', () => this.toggleWindow());
+addEventListeners() {
+    // Get elements
+    const bubble = this.shadowRoot.querySelector('.bubble');
+    const closeBtn = this.shadowRoot.querySelector('.close-button');
+    const minimizeBtn = this.shadowRoot.querySelector('.minimize-button');
+    const sendBtn = this.shadowRoot.querySelector('.send-button');
+    const input = this.shadowRoot.querySelector('.input');
+    
+    // Toggle chat window
+    if (bubble) {
+        bubble.addEventListener('click', () => this.toggleWindow());
+    }
+    
+    // Close window
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => this.closeWindow());
+    }
+    
+    // Minimize window
+    if (minimizeBtn) {
+        minimizeBtn.addEventListener('click', () => this.closeWindow());
+    }
+    
+    // Send message
+    if (sendBtn) {
+        sendBtn.addEventListener('click', () => this.sendMessage());
+    }
+    
+    // Handle Enter key in input field
+    if (input) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
             }
-            
-            // Close window
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => this.closeWindow());
-            }
-            
-            // Minimize window
-            if (minimizeBtn) {
-                minimizeBtn.addEventListener('click', () => this.closeWindow());
-            }
-            
-            // Send message
-            if (sendBtn) {
-                sendBtn.addEventListener('click', () => this.sendMessage());
-            }
-            
-            // Handle Enter key in input field
-            if (input) {
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        this.sendMessage();
-                    }
-                });
-                
-                // Auto-resize input field
-                input.addEventListener('input', function() {
-                    this.style.height = 'auto';
-                    this.style.height = this.scrollHeight + 'px';
-                });
-            }
-            
-            // Window resize event
-            window.addEventListener('resize', () => this.adjustLayout())
+        });
+        
+        // Auto-resize input field
+        input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    }
+    
+    // Window resize event
+    window.addEventListener('resize', () => this.adjustLayout()); // Dodaj średnik tutaj
+}
 
 /**
  * Make chat window draggable
  */
 makeDraggable() {
+
     const window = this.shadowRoot.querySelector('.window');
     const header = this.shadowRoot.querySelector('.header');
     
