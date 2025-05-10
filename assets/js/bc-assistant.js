@@ -331,20 +331,20 @@ render() {
             }
             
             /* Chat window */
-            .window {
-                position: absolute;
-                bottom: 70px;
-                right: 0;
-                width: 350px;
-                height: 500px;
-                border-radius: 10px;
-                box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
-                background-color: #fff;
-                display: none;
-                flex-direction: column;
-                overflow: hidden;
-                transition: opacity 0.3s ease, transform 0.3s ease;
-            }
+			.window {
+				position: absolute;
+				bottom: 70px;
+				right: 0;
+				width: 350px;
+				height: 500px;
+				border-radius: 10px;
+				box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+				background-color: #fff;
+				display: none;
+				flex-direction: column;
+				overflow: hidden; /* Zapobiega przewijaniu całego okna */
+				z-index: 99999;
+			}
             
             :host([position="bottom-left"]) .window {
                 right: auto;
@@ -395,24 +395,30 @@ render() {
                 line-height: 1;
             }
             
-            /* Messages container */
-            .messages {
-                flex: 1;
-                overflow-y: auto;
-                padding: 15px;
-                display: flex;
-                flex-direction: column;
-                background-color: #f5f5f5;
-                scroll-behavior: smooth;
-            }
+			/* Messages container - dokładna kontrola przewijania */
+			.messages {
+				flex: 1;
+				height: calc(100% - 120px); /* Odjęcie wysokości nagłówka i sekcji wprowadzania */
+				overflow-y: scroll !important; /* Wymuszenie przewijania pionowego */
+				overflow-x: hidden;
+				padding: 15px;
+				padding-bottom: 30px; /* Dodatkowy padding na dole dla lepszego przewijania */
+				display: flex;
+				flex-direction: column;
+				background-color: #f5f5f5;
+				scroll-behavior: smooth;
+				position: relative;
+			}
             
             /* Message styling */
-            .message {
-                margin-bottom: 15px;
-                max-width: 80%;
-                display: flex;
-                flex-direction: column;
-            }
+			.message {
+				margin-bottom: 15px;
+				max-width: 80%;
+				display: flex;
+				flex-direction: column;
+				position: relative;
+				z-index: 1;
+			}
             
             .message.user {
                 align-self: flex-end;
@@ -449,13 +455,18 @@ render() {
                 text-align: right;
             }
             
-            /* Input area */
-            .input-container {
-                display: flex;
-                padding: 10px;
-                border-top: 1px solid #eee;
-                background-color: white;
-            }
+			/* Input container - wyraźne oddzielenie od kontenera wiadomości */
+			.input-container {
+				padding: 10px;
+				border-top: 1px solid #eee;
+				background-color: white;
+				display: flex;
+				width: 100%;
+				box-sizing: border-box;
+				position: relative;
+				z-index: 10; /* Wyższy niż kontener wiadomości */
+				box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05); /* Cień oddzielający od wiadomości */
+			}
             
             .input {
                 flex: 1;
@@ -466,9 +477,11 @@ render() {
                 resize: none;
                 outline: none;
                 min-height: 40px;
-                max-height: 100px;
-                overflow-y: auto;
+                max-height: 80px; /* Ograniczenie maksymalnej wysokości */
+                overflow-y: auto; /* Przewijanie dla długich wpisów */
                 font-family: inherit;
+                margin-right: 10px;
+                box-sizing: border-box;
             }
             
             .input:focus {
@@ -781,58 +794,61 @@ makeDraggable() {
         window.style.bottom = 'auto';
     });
     
-    document.addEventListener('mouseup', () => {
-        isDragging = false;
-        window.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    });
-}
-
-    }
+document.addEventListener('mouseup', () => {
+    isDragging = false;
+    window.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+});
+} // koniec metody makeDraggable()
         
-        /**
-         * Toggle chat window
-         */
-        toggleWindow() {
-            if (this.state.isOpen) {
-                this.closeWindow();
-            } else {
-                this.openWindow();
-            }
-        }
+/**
+ * Toggle chat window
+ */
+toggleWindow() {
+    if (this.state.isOpen) {
+        this.closeWindow();
+    } else {
+        this.openWindow();
+    }
+}
         
         /**
          * Open chat window
          */
         openWindow() {
-            const window = this.shadowRoot.querySelector('.window');
-            const input = this.shadowRoot.querySelector('.input');
-            
-            if (!window) return;
-            
-            // Update state
-            this.state.isOpen = true;
-            
-            // Show window with animation
-            window.style.display = 'flex';
-            window.style.opacity = '0';
-            window.style.transform = 'translateY(10px)';
-            
-            // Animate opening
-            setTimeout(() => {
-                window.style.opacity = '1';
-                window.style.transform = 'translateY(0)';
-            }, 10);
-            
-            // Focus input field
-            if (input) {
-                setTimeout(() => {
-                    input.focus();
-                }, 300);
-            }
-            
-            // Scroll to latest messages
-            this.scrollToBottom();
-        }
+			const window = this.shadowRoot.querySelector('.window');
+			const input = this.shadowRoot.querySelector('.input');
+			const messagesContainer = this.shadowRoot.querySelector('.messages');
+    
+			if (!window) return;
+	
+			// Update state
+			this.state.isOpen = true;
+    
+			// Show window with animation
+			window.style.display = 'flex';
+			window.style.opacity = '0';
+			window.style.transform = 'translateY(10px)';
+    
+			// Animate opening
+			setTimeout(() => {
+			window.style.opacity = '1';
+			window.style.transform = 'translateY(0)';
+			}, 10);
+    
+			// Focus input field
+			if (input) {
+			setTimeout(() => {
+			input.focus();
+			}, 300);
+			}
+    
+			// Force scroll to bottom
+			if (messagesContainer) {
+			setTimeout(() => {
+				this.forceScroll(messagesContainer);
+			}, 100);
+			}
+		}
         
         /**
          * Close chat window
@@ -1066,19 +1082,34 @@ makeDraggable() {
         /**
          * Scroll messages to bottom
          */
-        scrollToBottom() {
-            const messagesContainer = this.shadowRoot.querySelector('.messages');
-            
-            if (!messagesContainer) return;
-            
-            // Immediate scroll
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
-            // Delayed scroll for images and dynamic content
-            setTimeout(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 100);
+scrollToBottom() {
+    const messagesContainer = this.shadowRoot.querySelector('.messages');
+    
+    if (!messagesContainer) {
+        console.error('Messages container not found');
+        return;
+    }
+    
+    // Próbuj różne metody przewijania
+    try {
+        // Metoda 1: Standardowa metoda
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        // Metoda 2: Użyj setTimeout dla opóźnionego przewijania
+        setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight + 1000; // Dodaj zapas
+        }, 100);
+        
+        // Metoda 3: Użyj scrollIntoView dla ostatniej wiadomości
+        const messages = messagesContainer.querySelectorAll('.message');
+        if (messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
+    } catch (error) {
+        console.error('Error scrolling to bottom:', error);
+    }
+}
         
         /**
          * Adjust layout based on screen size
@@ -1223,31 +1254,52 @@ function initTraditionalDOM() {
            return 'Witaj! W czym mogę pomóc?';
        }
        
-       function addMessage(role, content) {
-           // Create message HTML
-           const timestamp = formatTime(new Date());
-           const formattedContent = formatMessage(content);
-           
-           const messageHtml = `
-               <div class="bc-message bc-message-${role}">
-                   <div class="bc-message-content">${formattedContent}</div>
-                   <div class="bc-message-timestamp">${timestamp}</div>
-               </div>
-           `;
-           
-           // Add to DOM
-           $messagesContainer.append(messageHtml);
-           
-           // Save to state
-           messages.push({
-               role,
-               content,
-               timestamp: new Date()
-           });
-           
-           // Scroll to bottom
-           scrollToBottom();
-       }
+addMessage(role, content) {
+    const messagesContainer = this.shadowRoot.querySelector('.messages');
+    
+    if (!messagesContainer) {
+        console.error('Messages container not found');
+        return;
+    }
+    
+    // Create message element
+    const messageElem = document.createElement('div');
+    messageElem.className = `message ${role}`;
+    
+    // Create message content element
+    const contentElem = document.createElement('div');
+    contentElem.className = 'message-content';
+    contentElem.innerHTML = this.formatMessage(content);
+    
+    // Create timestamp element
+    const timestampElem = document.createElement('div');
+    timestampElem.className = 'message-timestamp';
+    timestampElem.textContent = this.formatTime(new Date());
+    
+    // Assemble message
+    messageElem.appendChild(contentElem);
+    messageElem.appendChild(timestampElem);
+    
+    // Add to container
+    messagesContainer.appendChild(messageElem);
+    
+    // Store in state
+    this.state.messages.push({
+        role,
+        content,
+        timestamp: new Date()
+    });
+    
+    // Scroll to bottom with delay to ensure content is rendered
+    setTimeout(() => {
+        this.scrollToBottom();
+    }, 50);
+    
+    // Try again with a longer delay for more complex content
+    setTimeout(() => {
+        this.scrollToBottom();
+    }, 300);
+}
        
        function formatMessage(text) {
            if (!text) return '';
