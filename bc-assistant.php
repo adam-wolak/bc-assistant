@@ -273,7 +273,7 @@ public function enqueue_frontend_assets() {
         );
     }
     
-    // Enqueue unified script
+    // Enqueue the main dispatcher script
     wp_enqueue_script(
         'bc-assistant-script',
         BC_ASSISTANT_URL . 'assets/js/bc-assistant.js',
@@ -281,6 +281,25 @@ public function enqueue_frontend_assets() {
         BC_ASSISTANT_VERSION,
         true
     );
+    
+    // Enqueue the appropriate implementation based on configuration
+    if ($use_shadow_dom) {
+        wp_enqueue_script(
+            'bc-assistant-shadow-dom',
+            BC_ASSISTANT_URL . 'assets/js/bc-assistant-shadow.js',
+            array('bc-assistant-script'),
+            BC_ASSISTANT_VERSION,
+            true
+        );
+    } else {
+        wp_enqueue_script(
+            'bc-assistant-traditional-dom',
+            BC_ASSISTANT_URL . 'assets/js/bc-assistant-traditional.js',
+            array('bc-assistant-script'),
+            BC_ASSISTANT_VERSION,
+            true
+        );
+    }
     
     // Pass data to script
     wp_localize_script('bc-assistant-script', 'bcAssistantData', array(
@@ -295,7 +314,8 @@ public function enqueue_frontend_assets() {
         'displayMode' => $config['display_mode'],
         'theme' => $config['theme'],
         'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
-        'useShadowDOM' => $use_shadow_dom
+        'useShadowDOM' => $use_shadow_dom,
+        'bubble_icon' => isset($config['bubble_icon']) ? $config['bubble_icon'] : 'chat'
     ));
 }
 
