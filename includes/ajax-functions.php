@@ -94,26 +94,6 @@ function bc_assistant_ajax_send_message() {
     wp_send_json_success($response);
     exit;
 }
-    
-    // Log the model being used
-    BC_Assistant_Helper::log('Using model: ' . BC_Assistant_Config::get_current_model());
-    
-    // Prepare page context for system message selection
-    $page_context = array(
-        'context' => $context,
-        'procedure_name' => $procedure_name
-    );
-    
-    // Send message to API
-    $response = bc_assistant_api_request($message, $thread_id, $page_context);
-    
-    // Log success
-    BC_Assistant_Helper::log('API response received successfully');
-    
-    // Return response
-    wp_send_json_success($response);
-    exit;
-}
 
 // Register AJAX functions
 add_action('wp_ajax_bc_assistant_send_message', 'bc_assistant_ajax_send_message');
