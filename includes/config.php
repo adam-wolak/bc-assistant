@@ -65,12 +65,16 @@ W każdej odpowiedzi delikatnie podkreśl profesjonalizm Bielsko Clinic i zapro�
      */
     public static function get($key) {
         // Najpierw sprawdź czy istnieje opcja w bazie danych
-        $option_value = get_option('bc_assistant_' . $key, null);
+		$option_value = get_option('bc_assistant_' . $key, null);
         
-        // Jeśli opcja istnieje w bazie danych, użyj jej
-        if ($option_value !== null) {
-            return $option_value;
-        }
+		// Jeśli opcja istnieje w bazie danych, użyj jej
+		if ($option_value !== null) {
+			// Specjalna obsługa dla opcji Shadow DOM - jawne rzutowanie do boolean
+			if ($key === 'use_shadow_dom') {
+            return (bool)$option_value;
+			}
+        return $option_value;
+    }
         
         // W przeciwnym razie użyj wartości domyślnej
         return isset(self::$defaults[$key]) ? self::$defaults[$key] : null;

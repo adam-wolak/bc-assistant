@@ -294,15 +294,21 @@ $available_models = BC_Assistant_Config::get_available_models();
                         <p class="description">Wybierz motyw kolorystyczny dla asystenta.</p>
                     </td>
                 </tr>
-				<tr valign="top">
-					<th scope="row">Użyj Shadow DOM</th>
+				<tr>
+					<th scope="row"><?php _e('Użyj Shadow DOM', 'bc-assistant'); ?></th>
 					<td>
 						<label>
-							<input type="checkbox" name="bc_assistant_use_shadow_dom" value="1" 
-							<?php checked(BC_Assistant_Config::get('use_shadow_dom'), 1); ?> />
-							Używaj izolacji Shadow DOM
-						</label>
-						<p class="description">Shadow DOM zapewnia lepszą izolację stylów, co pomaga uniknąć konfliktów z motywem i innymi wtyczkami.</p>
+							<input type="checkbox" name="bc_assistant_use_shadow_dom" <?php checked(BC_Assistant_Config::get('use_shadow_dom'), true); ?> />
+							<?php _e('Shadow DOM zapewnia lepszą izolację stylów, co pomaga uniknąć konfliktów z motywem', 'bc-assistant'); ?>
+					</label>
+					<?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+							<p class="description">
+							<?php echo sprintf(
+								__('Aktualna wartość: %s', 'bc-assistant'),
+								BC_Assistant_Config::get('use_shadow_dom') ? 'true' : 'false'
+							); ?>
+							</p>
+					<?php endif; ?>
 					</td>
 				</tr>
             </table>

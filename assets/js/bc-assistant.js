@@ -20,9 +20,11 @@ jQuery(document).ready(function($) {
     const useShadowDOM = window.bcAssistantData && window.bcAssistantData.useShadowDOM;
     
     // Log for debugging
-    if (window.bcAssistantData && window.bcAssistantData.debug) {
-        console.log('BC Assistant: Initializing with ' + (useShadowDOM ? 'Shadow DOM' : 'Traditional DOM') + ' implementation');
-        console.log('BC Assistant: Using model: ' + (window.bcAssistantData.model || 'default'));
+	if (window.bcAssistantData && window.bcAssistantData.debug) {
+    console.log('BC Assistant: Initializing with ' + (useShadowDOM ? 'Shadow DOM' : 'Traditional DOM') + ' implementation');
+    console.log('BC Assistant: Shadow DOM value from server:', window.bcAssistantData.useShadowDOM);
+    console.log('BC Assistant: Shadow DOM value type:', typeof window.bcAssistantData.useShadowDOM);
+
     }
     
     // Initialize appropriate implementation

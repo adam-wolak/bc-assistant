@@ -190,33 +190,56 @@ class BC_Assistant_Core {
     /**
      * Register plugin settings
      */
-    public function register_settings() {
-        // Core settings
-        register_setting('bc_assistant_settings', 'bc_assistant_model', 
-            ['sanitize_callback' => array('BC_Assistant_Config', 'sanitize_model'), 'default' => 'gpt-4o']);
-        register_setting('bc_assistant_settings', 'bc_assistant_api_key', 
-            ['sanitize_callback' => 'sanitize_text_field']);
-        register_setting('bc_assistant_settings', 'bc_assistant_system_message_default', 
-            ['sanitize_callback' => 'sanitize_textarea_field']);
-        register_setting('bc_assistant_settings', 'bc_assistant_welcome_message_default', 
-            ['sanitize_callback' => 'sanitize_text_field']);
-        
-        // Display settings
-        register_setting('bc_assistant_settings', 'bc_assistant_display_mode', 
-            ['sanitize_callback' => 'sanitize_text_field']);
-        register_setting('bc_assistant_settings', 'bc_assistant_bubble_icon', 
-            ['sanitize_callback' => 'sanitize_text_field']);
-        register_setting('bc_assistant_settings', 'bc_assistant_bubble_position', 
-            ['sanitize_callback' => 'sanitize_text_field', 'default' => 'bottom-right']);
-        register_setting('bc_assistant_settings', 'bc_assistant_theme', 
-            ['sanitize_callback' => 'sanitize_text_field', 'default' => 'light']);
-        
-        // Advanced settings
-register_setting('bc_assistant_settings', 'bc_assistant_use_shadow_dom', 
-    ['sanitize_callback' => function($value) { 
-        return $value ? true : false;
-    }, 'default' => true]);
-    }
+public function register_settings() {
+    // Core settings
+    register_setting('bc_assistant_settings', 'bc_assistant_model', 
+        ['sanitize_callback' => array('BC_Assistant_Config', 'sanitize_model'), 'default' => 'gpt-4o']);
+    register_setting('bc_assistant_settings', 'bc_assistant_api_key', 
+        ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('bc_assistant_settings', 'bc_assistant_system_message_default', 
+        ['sanitize_callback' => 'sanitize_textarea_field']);
+    register_setting('bc_assistant_settings', 'bc_assistant_welcome_message_default', 
+        ['sanitize_callback' => 'sanitize_text_field']);
+    
+    // Display settings
+    register_setting('bc_assistant_settings', 'bc_assistant_display_mode', 
+        ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('bc_assistant_settings', 'bc_assistant_bubble_icon', 
+        ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('bc_assistant_settings', 'bc_assistant_bubble_position', 
+        ['sanitize_callback' => 'sanitize_text_field', 'default' => 'bottom-right']);
+    register_setting('bc_assistant_settings', 'bc_assistant_theme', 
+        ['sanitize_callback' => 'sanitize_text_field', 'default' => 'light']);
+    
+    // Advanced settings - POPRAWIONA OBSŁUGA CHECKBOXA
+    register_setting('bc_assistant_settings', 'bc_assistant_use_shadow_dom', 
+        [
+            'sanitize_callback' => function($value) { 
+                // Explicit conversion to boolean for checkboxes
+                if ($value === 'on' || $value === '1' || $value === 'true' || $value === true) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }, 
+            'default' => false // Ustawienie domyślnie na false, co wymusi działanie traditional DOM
+        ]
+    );
+
+    // Debug mode
+    register_setting('bc_assistant_settings', 'bc_assistant_debug_mode', 
+        [
+            'sanitize_callback' => function($value) { 
+                if ($value === 'on' || $value === '1' || $value === 'true' || $value === true) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }, 
+            'default' => false
+        ]
+    );
+}
     
     /**
      * Register admin menu page
@@ -316,6 +339,7 @@ public function enqueue_frontend_assets() {
         'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
         'useShadowDOM' => $use_shadow_dom,
         'bubble_icon' => isset($config['bubble_icon']) ? $config['bubble_icon'] : 'chat'
+		'useShadowDOM' => (bool)$use_shadow_dom, // Jawne rzutowanie do boolean
     ));
 }
 
@@ -446,6 +470,26 @@ public function render_chat_component() {
     public function initialize_settings() {
         BC_Assistant_Config::set_defaults();
     }
+	
+	/**
+ * Wyświetl informację o zapisanych ustawieniach
+ */
+	public function bc_assistant_settings_saved_notice() {
+		if (isset($_GET['settings-updated']) && $_GET['settings-updated'] && isset($_GET['page']) && $_GET['page'] === 'bc-assistant') {
+			$use_shadow_dom = BC_Assistant_Config::get('use_shadow_dom');
+			$shadow_dom_value = $use_shadow_dom ? 'true' : 'false';
+        
+			echo '<div class="notice notice-success is-dismissible">';
+			echo '<p>' . __('Ustawienia BC Assistant zostały zapisane.', 'bc-assistant') . '</p>';
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            echo '<p>' . __('Wartość Shadow DOM: ', 'bc-assistant') . $shadow_dom_value . '</p>';
+        }
+        
+        echo '</div>';
+    }
+}
+add_action('admin_notices', array($this, 'bc_assistant_settings_saved_notice'));
 }
 
 // Initialize plugin

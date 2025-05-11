@@ -35,6 +35,14 @@ function initTraditionalDOM() {
         
         // Make window draggable
         makeChatWindowDraggable();
+		
+		// Wywołanie funkcji naprawczej:
+		fixInputField();
+		
+		// Debugowanie
+		if (window.bcAssistantData && window.bcAssistantData.debug) {
+			console.log('BC Assistant: Zainicjowano naprawione funkcje');
+		}
         
         // Add welcome message
         addMessage('assistant', getWelcomeMessage());
@@ -228,142 +236,260 @@ function initTraditionalDOM() {
             }
         }
         
-        function makeChatWindowDraggable() {
-            // Check if window element exists
-            if (!$window.length) return;
+function makeChatWindowDraggable() {
+    // Check if window element exists
+    const $window = $('.bc-assistant-window');
+    if (!$window.length) return;
+    
+    let isDragging = false;
+    let offsetX, offsetY;
+    
+    // Make header draggable
+    const $header = $window.find('.bc-assistant-header');
+    
+    if ($header.length) {
+        $header.css('cursor', 'move');
+        
+        // WAŻNE: Najbardziej krytyczna poprawka - obsługa mousedown
+        // Zamiast bezpośrednio dodawać event listener, używamy delegacji zdarzeń
+        // aby uniknąć konfliktów z innymi handlerami
+        $header.off('mousedown').on('mousedown', function(e) {
+            // Zapobiegaj dalszej propagacji zdarzenia
+            e.stopPropagation();
             
-            let isDragging = false;
-            let offsetX, offsetY;
-            
-            // Make header draggable
-            const $header = $window.find('.bc-assistant-header');
-            
-            if ($header.length) {
-                $header.css('cursor', 'move');
-                
-                $header.on('mousedown', startDrag);
-                $header.on('touchstart', handleTouchStart);
+            // Nie rozpoczynaj przeciągania jeśli kliknięto na przyciski kontrolne
+            if ($(e.target).closest('.bc-assistant-close, .bc-assistant-minimize').length) {
+                return;
             }
             
-            function startDrag(e) {
-                // Don't start dragging if we're clicking on control buttons
-                if ($(e.target).closest('.bc-assistant-close, .bc-assistant-minimize').length) {
-                    return;
-                }
-                
-                isDragging = true;
-                offsetX = e.clientX - $window.offset().left;
-                offsetY = e.clientY - $window.offset().top;
-                
-                // Add event listeners
-                $(document).on('mousemove', onDrag);
-                $(document).on('mouseup', stopDrag);
-                
-                // Remove transition for smoother dragging
-                $window.css('transition', 'none');
-                
-                // Prevent text selection
-                $('body').css('user-select', 'none');
+            isDragging = true;
+            offsetX = e.clientX - $window.offset().left;
+            offsetY = e.clientY - $window.offset().top;
+            
+            // Dodaj listenery zdarzeń
+            $(document).on('mousemove.bc-dragging', onDrag);
+            $(document).on('mouseup.bc-dragging', stopDrag);
+            
+            // Usuń transition dla płynniejszego przeciągania
+            $window.css('transition', 'none');
+            
+            // Zapobiegaj zaznaczaniu tekstu
+            $('body').css('user-select', 'none');
+            
+            // Zapobiegaj domyślnej akcji
+            return false;
+        });
+        
+        // Dodaj obsługę dla urządzeń dotykowych
+        $header.off('touchstart').on('touchstart', function(e) {
+            // Zapobiegaj dalszej propagacji zdarzenia
+            e.stopPropagation();
+            
+            // Nie rozpoczynaj przeciągania jeśli dotknięto przyciski kontrolne
+            if ($(e.target).closest('.bc-assistant-close, .bc-assistant-minimize').length) {
+                return;
             }
             
-            function handleTouchStart(e) {
-                // Don't start dragging if we're touching control buttons
-                if ($(e.target).closest('.bc-assistant-close, .bc-assistant-minimize').length) {
-                    return;
-                }
-                
-                const touch = e.originalEvent.touches[0];
-                isDragging = true;
-                offsetX = touch.clientX - $window.offset().left;
-                offsetY = touch.clientY - $window.offset().top;
-                
-                // Add event listeners
-                $(document).on('touchmove', handleTouchMove);
-                $(document).on('touchend', handleTouchEnd);
-                
-                // Remove transition for smoother dragging
-                $window.css('transition', 'none');
-                
-                // Prevent text selection
-                $('body').css('user-select', 'none');
-            }
+            const touch = e.originalEvent.touches[0];
+            isDragging = true;
+            offsetX = touch.clientX - $window.offset().left;
+            offsetY = touch.clientY - $window.offset().top;
             
-            function onDrag(e) {
-                if (!isDragging) return;
-                
-                const x = e.clientX - offsetX;
-                const y = e.clientY - offsetY;
-                
-                // Stay within viewport boundaries
-                const maxX = $(window).width() - $window.outerWidth();
-                const maxY = $(window).height() - $window.outerHeight();
-                
-                const boundedX = Math.max(0, Math.min(x, maxX));
-                const boundedY = Math.max(0, Math.min(y, maxY));
-                
-                // Set new position
-                $window.css({
-                    left: boundedX + 'px',
-                    top: boundedY + 'px',
-                    right: 'auto',
-                    bottom: 'auto'
-                });
-            }
+            // Dodaj listenery zdarzeń
+            $(document).on('touchmove.bc-dragging', handleTouchMove);
+            $(document).on('touchend.bc-dragging', handleTouchEnd);
             
-            function handleTouchMove(e) {
-                if (!isDragging) return;
-                
-                const touch = e.originalEvent.touches[0];
-                const x = touch.clientX - offsetX;
-                const y = touch.clientY - offsetY;
-                
-                // Stay within viewport boundaries
-                const maxX = $(window).width() - $window.outerWidth();
-                const maxY = $(window).height() - $window.outerHeight();
-                
-                const boundedX = Math.max(0, Math.min(x, maxX));
-                const boundedY = Math.max(0, Math.min(y, maxY));
-                
-                // Set new position
-                $window.css({
-                    left: boundedX + 'px',
-                    top: boundedY + 'px',
-                    right: 'auto',
-                    bottom: 'auto'
-                });
-                
-                // Prevent page scrolling
-                e.preventDefault();
-            }
+            // Usuń transition dla płynniejszego przeciągania
+            $window.css('transition', 'none');
             
-            function stopDrag() {
-                isDragging = false;
-                
-                // Remove event listeners
-                $(document).off('mousemove', onDrag);
-                $(document).off('mouseup', stopDrag);
-                
-                // Restore transition
-                $window.css('transition', '');
-                
-                // Restore text selection
-                $('body').css('user-select', '');
-            }
+            // Zapobiegaj zaznaczaniu tekstu
+            $('body').css('user-select', 'none');
             
-            function handleTouchEnd() {
-                isDragging = false;
-                
-                // Remove event listeners
-                $(document).off('touchmove', handleTouchMove);
-                $(document).off('touchend', handleTouchEnd);
-                
-                // Restore transition
-                $window.css('transition', '');
-                
-                // Restore text selection
-                $('body').css('user-select', '');
+            // Zapobiegaj domyślnej akcji
+            return false;
+        });
+    }
+    
+    function onDrag(e) {
+        if (!isDragging) return;
+        
+        // Zapobiegaj dalszej propagacji zdarzenia
+        e.stopPropagation();
+        
+        const x = e.clientX - offsetX;
+        const y = e.clientY - offsetY;
+        
+        // Zostań w granicach viewportu
+        const maxX = $(window).width() - $window.outerWidth();
+        const maxY = $(window).height() - $window.outerHeight();
+        
+        const boundedX = Math.max(0, Math.min(x, maxX));
+        const boundedY = Math.max(0, Math.min(y, maxY));
+        
+        // Ustaw nową pozycję
+        $window.css({
+            left: boundedX + 'px',
+            top: boundedY + 'px',
+            right: 'auto',
+            bottom: 'auto',
+            position: 'fixed' // Ważne: upewnij się, że pozycja jest fixed
+        });
+        
+        // Zapobiegaj domyślnej akcji
+        return false;
+    }
+    
+    function handleTouchMove(e) {
+        if (!isDragging) return;
+        
+        // Zapobiegaj dalszej propagacji zdarzenia
+        e.stopPropagation();
+        
+        const touch = e.originalEvent.touches[0];
+        const x = touch.clientX - offsetX;
+        const y = touch.clientY - offsetY;
+        
+        // Zostań w granicach viewportu
+        const maxX = $(window).width() - $window.outerWidth();
+        const maxY = $(window).height() - $window.outerHeight();
+        
+        const boundedX = Math.max(0, Math.min(x, maxX));
+        const boundedY = Math.max(0, Math.min(y, maxY));
+        
+        // Ustaw nową pozycję
+        $window.css({
+            left: boundedX + 'px',
+            top: boundedY + 'px',
+            right: 'auto',
+            bottom: 'auto',
+            position: 'fixed' // Ważne: upewnij się, że pozycja jest fixed
+        });
+        
+        // Zapobiegaj przewijaniu strony
+        e.preventDefault();
+        
+        // Zapobiegaj domyślnej akcji
+        return false;
+    }
+    
+    function stopDrag(e) {
+        if (!isDragging) return;
+        
+        isDragging = false;
+        
+        // Usuń listenery zdarzeń
+        $(document).off('mousemove.bc-dragging', onDrag);
+        $(document).off('mouseup.bc-dragging', stopDrag);
+        
+        // Przywróć transition
+        $window.css('transition', '');
+        
+        // Przywróć możliwość zaznaczania tekstu
+        $('body').css('user-select', '');
+        
+        // Upewnij się, że okno pozostaje otwarte
+        $window.css('display', 'flex');
+        
+        // Zapobiegaj dalszej propagacji zdarzenia
+        e.stopPropagation();
+        
+        // Zapobiegaj domyślnej akcji
+        return false;
+    }
+    
+    function handleTouchEnd(e) {
+        if (!isDragging) return;
+        
+        isDragging = false;
+        
+        // Usuń listenery zdarzeń
+        $(document).off('touchmove.bc-dragging', handleTouchMove);
+        $(document).off('touchend.bc-dragging', handleTouchEnd);
+        
+        // Przywróć transition
+        $window.css('transition', '');
+        
+        // Przywróć możliwość zaznaczania tekstu
+        $('body').css('user-select', '');
+        
+        // Upewnij się, że okno pozostaje otwarte
+        $window.css('display', 'flex');
+        
+        // Zapobiegaj dalszej propagacji zdarzenia
+        e.stopPropagation();
+        
+        // Zapobiegaj domyślnej akcji
+        return false;
+    }
+}
+
+function fixInputField() {
+    // Znajdź pole wprowadzania tekstu
+    const $input = $('.bc-assistant-input');
+    const $inputContainer = $('.bc-assistant-input-container');
+    
+    if (!$input.length || !$inputContainer.length) {
+        console.error('BC Assistant: Nie znaleziono pola wprowadzania tekstu');
+        
+        // Spróbuj naprawić strukturę DOM jeśli jest uszkodzona
+        const $window = $('.bc-assistant-window');
+        if ($window.length) {
+            // Sprawdź czy kontener wejściowy istnieje
+            if (!$inputContainer.length) {
+                // Dodaj kontener wejściowy jeśli nie istnieje
+                $window.append(`
+                    <div class="bc-assistant-input-container">
+                        <textarea class="bc-assistant-input" placeholder="Wpisz swoje pytanie..."></textarea>
+                        <button class="bc-assistant-voice">
+                            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"></path><path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"></path></svg>
+                        </button>
+                        <button class="bc-assistant-send">→</button>
+                    </div>
+                `);
+            } else {
+                // Aktualizuj strukture wewnątrz kontenera
+                $inputContainer.html(`
+                    <textarea class="bc-assistant-input" placeholder="Wpisz swoje pytanie..."></textarea>
+                    <button class="bc-assistant-voice">
+                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"></path><path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"></path></svg>
+                    </button>
+                    <button class="bc-assistant-send">→</button>
+                `);
             }
         }
+    }
+    
+    // Upewnij się że pole jest widoczne i ma poprawne style
+    $inputContainer.css({
+        'display': 'flex',
+        'padding': '10px',
+        'border-top': '1px solid #eee',
+        'background-color': '#fff',
+        'z-index': '10'
+    });
+    
+    $input.css({
+        'flex': '1',
+        'min-height': '40px',
+        'padding': '10px 15px',
+        'border': '1px solid #ddd',
+        'border-radius': '20px',
+        'outline': 'none',
+        'font-family': 'inherit'
+    });
+    
+    // Ustaw ponownie zdarzenie wysyłania
+    $('.bc-assistant-send').off('click').on('click', sendMessage);
+    
+    // Napraw obsługę klawisza Enter
+    $input.off('keydown').on('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+            return false;
+        }
+    });
+}
         
         function addModeToggle() {
             // Create the toggle buttons
