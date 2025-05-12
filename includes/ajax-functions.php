@@ -95,6 +95,245 @@ function bc_assistant_ajax_send_message() {
     exit;
 }
 
+/**
+ * Process audio file and convert it to text using OpenAI API
+ * 
+ * @param string $audio_file Path to temporary audio file
+ * @param string|null $thread_id Thread ID
+ * @param array $page_context Page context information
+ * @return array API response
+ */
+function bc_assistant_process_audio($audio_file, $thread_id = null, $page_context = null) {
+    // Log for debugging
+    BC_Assistant_Helper::log('Processing audio file');
+    
+    if (!file_exists($audio_file)) {
+        BC_Assistant_Helper::log('Audio file not found');
+        return new WP_Error('missing_file', 'Plik audio nie został znaleziony');
+    }
+    
+    // Get API key
+    $api_key = BC_Assistant_Config::get('api_key');
+    if (empty($api_key)) {
+        BC_Assistant_Helper::log('Missing API key');
+        return new WP_Error('missing_api_key', 'Brak klucza API');
+    }
+    
+    // Determine API type to use
+    $api_type = BC_Assistant_Config::get('whisper_api_provider', 'openai');
+    
+    // Process audio using appropriate API
+    if ($api_type === 'anthropic') {
+        // Currently Anthropic doesn't have a speech-to-text API, fall back to OpenAI
+        BC_Assistant_Helper::log('Falling back to OpenAI for speech-to-text');
+        $api_type = 'openai';
+    }
+    
+    // Process with OpenAI's Whisper API
+    $transcription = bc_assistant_transcribe_audio_openai($audio_file, $api_key);
+    
+    // Check for transcription errors
+    if (is_wp_error($transcription)) {
+        BC_Assistant_Helper::log('Transcription error: ' . $transcription->get_error_message());
+        return $transcription;
+    }
+	// Log success
+    BC_Assistant_Helper::log('Audio transcribed successfully: ' . substr($transcription, 0, 100) . '...');
+	
+	// Check for special commands like "połącz z recepcją"
+    $special_command = false;
+    $lower_transcription = mb_strtolower(trim($transcription), 'UTF-8');
+    
+    // Frazy do rozpoznawania
+    $connection_phrases = [
+        'połącz z recepcją',
+        'połącz mnie z recepcją',
+        'zadzwoń do recepcji',
+        'chcę rozmawiać z recepcją',
+        'potrzebuję połączenia z recepcją',
+        'kontakt z recepcją'
+    ];
+    
+    foreach ($connection_phrases as $phrase) {
+        if (strpos($lower_transcription, $phrase) !== false) {
+            // To jest komenda do połączenia z recepcją
+            $special_command = true;
+            
+            // Numer telefonu recepcji - ustaw odpowiedni
+            $reception_phone = '+48123456789';
+            
+            // Zwróć specjalną odpowiedź, która zostanie zinterpretowana przez klienta JS
+            return [
+                'message' => 'Już łączę z recepcją. Proszę czekać...',
+                'transcription' => $transcription,
+                'thread_id' => $thread_id,
+                'special_action' => 'call_reception',
+                'phone_number' => $reception_phone
+            ];
+        }
+    }
+    
+    // Jeśli nie jest to specjalna komenda, wykonaj standardowe przetwarzanie
+    if (!$special_command) {
+        // Now process the transcribed text like a regular message
+        $response = bc_assistant_api_request($transcription, $thread_id, $page_context);
+        
+        // If successful, add transcription to response and add follow-up prompt
+        if (!is_wp_error($response)) {
+            $response['transcription'] = $transcription;
+            
+            // Append a prompt for further questions to the response
+            $response['message'] = $response['message'] . ' Czy masz jeszcze jakieś pytania?';
+            
+            // Generate speech from response
+            $api_key = BC_Assistant_Config::get('api_key');
+            $speech = bc_assistant_text_to_speech($response['message'], $api_key);
+            
+            if (!is_wp_error($speech)) {
+                $response['speech'] = $speech;
+            }
+        }
+        
+        return $response;
+    }
+}
+
+/**
+ * Convert text to speech using OpenAI TTS API
+ * 
+ * @param string $text Text to convert to speech
+ * @param string $api_key OpenAI API key
+ * @return string|WP_Error Base64 encoded audio or error
+ */
+function bc_assistant_text_to_speech($text, $api_key) {
+    // Limit text length to prevent API errors (OpenAI TTS has a character limit)
+    $max_length = 4096;
+    if (strlen($text) > $max_length) {
+        $text = substr($text, 0, $max_length - 3) . '...';
+    }
+    
+    // Set up curl request
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.openai.com/v1/audio/speech');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $api_key,
+        'Content-Type: application/json'
+    ]);
+    
+    // Create request body
+    $request_body = json_encode([
+        'model' => 'tts-1',
+        'input' => $text,
+        'voice' => 'alloy',  // Using nova voice (girl) or alloy, echo, fable, onyx, shimmer
+		'speed' => 0.9,
+        'response_format' => 'mp3',
+    ]);
+    
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $request_body);
+    
+    // Execute request
+    $response = curl_exec($ch);
+    
+    // Check for errors
+    if (curl_errno($ch)) {
+        $error = curl_error($ch);
+        curl_close($ch);
+        BC_Assistant_Helper::log('cURL error: ' . $error);
+        return new WP_Error('curl_error', 'Błąd połączenia: ' . $error);
+    }
+    
+    // Get HTTP status code
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    // Check for successful response
+    if ($http_code !== 200) {
+        BC_Assistant_Helper::log('TTS API Error: ' . $http_code);
+        return new WP_Error('api_error', 'API Error: ' . $http_code);
+    }
+    
+    // Convert binary audio to base64 for transmission
+    $base64_audio = base64_encode($response);
+    
+    return $base64_audio;
+}
+
+/**
+ * Transcribe audio file using OpenAI's Whisper API
+ * 
+ * @param string $audio_file Path to audio file
+ * @param string $api_key OpenAI API key
+ * @return string|WP_Error Transcribed text or error
+ */
+function bc_assistant_transcribe_audio_openai($audio_file, $api_key) {
+    // Prepare file for upload
+    if (!function_exists('curl_file_create')) {
+        function curl_file_create($filename, $mimetype = '', $postname = '') {
+            return "@$filename;filename="
+                . ($postname ?: basename($filename))
+                . ($mimetype ? ";type=$mimetype" : '');
+        }
+    }
+    
+    // Get file MIME type
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime_type = finfo_file($finfo, $audio_file);
+    finfo_close($finfo);
+    
+    // Create CURLFile
+    $cfile = curl_file_create($audio_file, $mime_type, 'audio.wav');
+    
+    // Set up curl request
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.openai.com/v1/audio/transcriptions');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $api_key,
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, [
+        'file' => $cfile,
+        'model' => 'whisper-1',
+        'language' => 'pl', // Set language to Polish
+        'response_format' => 'json',
+    ]);
+    
+    // Execute the request
+    $response = curl_exec($ch);
+    
+    // Check for errors
+    if (curl_errno($ch)) {
+        $error = curl_error($ch);
+        curl_close($ch);
+        BC_Assistant_Helper::log('cURL error: ' . $error);
+        return new WP_Error('curl_error', 'Błąd połączenia: ' . $error);
+    }
+    
+    // Get HTTP status code
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    // Check for successful response
+    if ($http_code !== 200) {
+        BC_Assistant_Helper::log('API Error: ' . $http_code . ' - ' . $response);
+        return new WP_Error('api_error', 'API Error: ' . $http_code, $response);
+    }
+    
+    // Decode response
+    $data = json_decode($response, true);
+    
+    // Check if we have a transcription
+    if (!isset($data['text'])) {
+        BC_Assistant_Helper::log('Invalid API response', $data);
+        return new WP_Error('invalid_response', 'Invalid API response', $data);
+    }
+    
+    // Return transcribed text
+    return $data['text'];
+}
+
 // Register AJAX functions
 add_action('wp_ajax_bc_assistant_send_message', 'bc_assistant_ajax_send_message');
 add_action('wp_ajax_nopriv_bc_assistant_send_message', 'bc_assistant_ajax_send_message');

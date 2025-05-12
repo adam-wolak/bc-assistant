@@ -85,6 +85,7 @@ class BC_Assistant_Core {
         require_once BC_ASSISTANT_PATH . 'includes/activation.php';
         require_once BC_ASSISTANT_PATH . 'includes/migrations.php';
         require_once BC_ASSISTANT_PATH . 'includes/diagnostic.php';
+		require_once BC_ASSISTANT_PATH . 'includes/admin-notices.php';
         
         // Additional modules can be loaded conditionally here
     }
@@ -124,6 +125,8 @@ class BC_Assistant_Core {
         
         // Initialize default settings on first activation
         add_action('plugins_loaded', array($this, 'initialize_settings'));
+		// Add hook for settings saved notice
+		add_action('admin_notices', 'bc_assistant_settings_saved_notice');
     }
     
     /**
@@ -212,18 +215,17 @@ public function register_settings() {
         ['sanitize_callback' => 'sanitize_text_field', 'default' => 'light']);
     
     // Advanced settings - POPRAWIONA OBSŁUGA CHECKBOXA
-    register_setting('bc_assistant_settings', 'bc_assistant_use_shadow_dom', 
-        [
-            'sanitize_callback' => function($value) { 
-                // Explicit conversion to boolean for checkboxes
-                if ($value === 'on' || $value === '1' || $value === 'true' || $value === true) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }, 
-            'default' => false // Ustawienie domyślnie na false, co wymusi działanie traditional DOM
-        ]
+	register_setting('bc_assistant_settings', 'bc_assistant_use_shadow_dom', 
+    [
+        'sanitize_callback' => function($value) { 
+            if ($value === 'on' || $value === '1' || $value === 'true' || $value === true) {
+                return '1';
+            } else {
+                return '0';
+            }
+        }, 
+        'default' => '1'
+    ]
     );
 
     // Debug mode
@@ -270,6 +272,9 @@ public function register_settings() {
     /**
      * Enqueue frontend assets
      */
+/**
+ * Enqueue frontend assets
+ */
 /**
  * Enqueue frontend assets
  */
@@ -324,23 +329,22 @@ public function enqueue_frontend_assets() {
         );
     }
     
-    // Pass data to script
-    wp_localize_script('bc-assistant-script', 'bcAssistantData', array(
-        'model' => $config['model'],
-        'position' => isset($config['bubble_position']) ? $config['bubble_position'] : 'bottom-right',
-        'title' => 'Asystent Bielsko Clinic',
-        'welcomeMessage' => $config['welcome_message_default'],
-        'apiEndpoint' => admin_url('admin-ajax.php'),
-        'action' => 'bc_assistant_send_message',
-        'nonce' => wp_create_nonce('bc_assistant_nonce'),
-        'debug' => defined('WP_DEBUG') && WP_DEBUG,
-        'displayMode' => $config['display_mode'],
-        'theme' => $config['theme'],
-        'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
-        'useShadowDOM' => $use_shadow_dom,
-        'bubble_icon' => isset($config['bubble_icon']) ? $config['bubble_icon'] : 'chat'
-		'useShadowDOM' => (bool)$use_shadow_dom, // Jawne rzutowanie do boolean
-    ));
+// Pass data to script
+wp_localize_script('bc-assistant-script', 'bcAssistantData', array(
+    'model' => $config['model'],
+    'position' => isset($config['bubble_position']) ? $config['bubble_position'] : 'bottom-right',
+    'title' => 'Asystent Bielsko Clinic',
+    'welcomeMessage' => $config['welcome_message_default'],
+    'apiEndpoint' => admin_url('admin-ajax.php'),
+    'action' => 'bc_assistant_send_message',
+    'nonce' => wp_create_nonce('bc_assistant_nonce'),
+    'debug' => defined('WP_DEBUG') && WP_DEBUG,
+    'displayMode' => $config['display_mode'],
+    'theme' => $config['theme'],
+    'assistant_id' => getenv('OPENAI_ASSISTANT_ID'),
+    'useShadowDOM' => $use_shadow_dom === true, // Jawne porównanie do true
+    'bubble_icon' => isset($config['bubble_icon']) ? $config['bubble_icon'] : 'chat'
+));
 }
 
 /**
@@ -447,22 +451,6 @@ public function render_chat_component() {
         }
     }
     
-    /**
-     * Display API key notice
-     */
-    public function display_api_key_notice() {
-        $settings_url = admin_url('admin.php?page=bc-assistant');
-        
-        ?>
-        <div class="notice notice-warning">
-            <p>
-                <strong>BC Assistant:</strong> 
-                <?php _e('Configure API key to use the assistant.', 'bc-assistant'); ?>
-                <a href="<?php echo esc_url($settings_url); ?>"><?php _e('Go to settings', 'bc-assistant'); ?></a>
-            </p>
-        </div>
-        <?php
-    }
     
     /**
      * Initialize settings on first activation
@@ -470,27 +458,11 @@ public function render_chat_component() {
     public function initialize_settings() {
         BC_Assistant_Config::set_defaults();
     }
+}
 	
-	/**
+ /**
  * Wyświetl informację o zapisanych ustawieniach
  */
-	public function bc_assistant_settings_saved_notice() {
-		if (isset($_GET['settings-updated']) && $_GET['settings-updated'] && isset($_GET['page']) && $_GET['page'] === 'bc-assistant') {
-			$use_shadow_dom = BC_Assistant_Config::get('use_shadow_dom');
-			$shadow_dom_value = $use_shadow_dom ? 'true' : 'false';
-        
-			echo '<div class="notice notice-success is-dismissible">';
-			echo '<p>' . __('Ustawienia BC Assistant zostały zapisane.', 'bc-assistant') . '</p>';
-        
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            echo '<p>' . __('Wartość Shadow DOM: ', 'bc-assistant') . $shadow_dom_value . '</p>';
-        }
-        
-        echo '</div>';
-    }
-}
-add_action('admin_notices', array($this, 'bc_assistant_settings_saved_notice'));
-}
 
 // Initialize plugin
 function bc_assistant_init() {

@@ -41,7 +41,8 @@ function initTraditionalDOM() {
 		
 		// Debugowanie
 		if (window.bcAssistantData && window.bcAssistantData.debug) {
-			console.log('BC Assistant: Zainicjowano naprawione funkcje');
+			console.log('BC Assistant (Traditional DOM): Initialized with fixes');
+			console.log('BC Assistant: Shadow DOM setting:', window.bcAssistantData.useShadowDOM);
 		}
         
         // Add welcome message
@@ -447,13 +448,13 @@ function fixInputField() {
                     </div>
                 `);
             } else {
-                // Aktualizuj strukture wewnątrz kontenera
+                // Aktualizuj strukturę wewnątrz kontenera
                 $inputContainer.html(`
                     <textarea class="bc-assistant-input" placeholder="Wpisz swoje pytanie..."></textarea>
                     <button class="bc-assistant-voice">
                         <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"></path><path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"></path></svg>
-                    </button>
-                    <button class="bc-assistant-send">→</button>
+                        </button>
+                        <button class="bc-assistant-send">→</button>
                 `);
             }
         }

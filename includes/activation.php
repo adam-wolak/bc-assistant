@@ -50,8 +50,19 @@ function bc_assistant_activate() {
  * Actions to perform on plugin deactivation
  */
 function bc_assistant_deactivate() {
-    // Log deactivation
-    BC_Assistant_Helper::log('Plugin deactivated');
+    // Wyczyść zarejestrowane hooki
+    // UWAGA: Ta metoda czyszczenia hooków jest odpowiednia tylko dla funkcji globalnych,
+    // dla metod klasy musielibyśmy użyć innego podejścia
+    remove_action('admin_notices', 'bc_assistant_settings_saved_notice');
+    remove_action('admin_notices', 'bc_assistant_api_key_notice');
+    
+    // Usuń utworzone transients
+    delete_transient('bc_assistant_cache');
+    
+    // Log deaktywacji
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('BC Assistant: Plugin deactivated');
+    }
 }
 
 /**

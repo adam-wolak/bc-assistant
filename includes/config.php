@@ -54,7 +54,7 @@ W każdej odpowiedzi delikatnie podkreśl profesjonalizm Bielsko Clinic i zapro�
     'bubble_icon' => 'chat',
     'theme' => 'light',
     'context_detection' => true,
-    'use_shadow_dom' => false  // Dodane ustawienie Shadow DOM
+    'use_shadow_dom' => true  // Dodane ustawienie Shadow DOM
 );
     
     /**
@@ -63,22 +63,28 @@ W każdej odpowiedzi delikatnie podkreśl profesjonalizm Bielsko Clinic i zapro�
      * @param string $key Klucz konfiguracji
      * @return mixed Wartość konfiguracji
      */
-    public static function get($key) {
-        // Najpierw sprawdź czy istnieje opcja w bazie danych
-		$option_value = get_option('bc_assistant_' . $key, null);
-        
-		// Jeśli opcja istnieje w bazie danych, użyj jej
-		if ($option_value !== null) {
-			// Specjalna obsługa dla opcji Shadow DOM - jawne rzutowanie do boolean
-			if ($key === 'use_shadow_dom') {
-            return (bool)$option_value;
-			}
+
+public static function get($key) {
+    // Najpierw sprawdź czy istnieje opcja w bazie danych
+    $option_value = get_option('bc_assistant_' . $key, null);
+    
+    // Dla Shadow DOM zawsze zwracaj wartość boolean
+    if ($key === 'use_shadow_dom') {
+        if ($option_value === null) {
+            return (bool)self::$defaults[$key];
+        }
+        // Konwersja "0", "1", "", "false", "true" do prawdziwej wartości boolean
+        return filter_var($option_value, FILTER_VALIDATE_BOOLEAN);
+    }
+    
+    // Dla pozostałych opcji standardowa logika
+    if ($option_value !== null) {
         return $option_value;
     }
-        
-        // W przeciwnym razie użyj wartości domyślnej
-        return isset(self::$defaults[$key]) ? self::$defaults[$key] : null;
-    }
+    
+    // W przeciwnym razie użyj wartości domyślnej
+    return isset(self::$defaults[$key]) ? self::$defaults[$key] : null;
+}
     
     /**
      * Ustawia wartość konfiguracyjną
